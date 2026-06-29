@@ -30,7 +30,14 @@ public record SummaryResult(
     double CostUsd);
 
 // Raised when Claude returns something we can't use (bad JSON, refusal, empty).
-public class SummarizationException(string message) : Exception(message);
+// Carries token usage when a billed response came back (so failures are still cost-logged); zero when none did (timeout/429).
+public class SummarizationException(string message, long inputTokens = 0, long outputTokens = 0, double costUsd = 0)
+    : Exception(message)
+{
+    public long InputTokens { get; } = inputTokens;
+    public long OutputTokens { get; } = outputTokens;
+    public double CostUsd { get; } = costUsd;
+}
 
 public static class Severity
 {

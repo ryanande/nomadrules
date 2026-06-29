@@ -6,8 +6,10 @@ namespace NomadRules.Summarizer.Summarization;
 
 public class ClaudeSummarizer(AnthropicClient client, ClaudeOptions options, ILogger<ClaudeSummarizer> log)
 {
-    private readonly Lazy<string> _systemPrompt = new(() => File.ReadAllText(
-        Path.Combine(AppContext.BaseDirectory, "Prompts", "SummarizeInsuranceChange.txt")));
+    public static readonly string PromptPath =
+        Path.Combine(AppContext.BaseDirectory, "Prompts", "SummarizeInsuranceChange.txt");
+
+    private readonly Lazy<string> _systemPrompt = new(() => File.ReadAllText(PromptPath));
 
     private static readonly Dictionary<string, JsonElement> Schema = new()
     {
@@ -41,12 +43,17 @@ public class ClaudeSummarizer(AnthropicClient client, ClaudeOptions options, ILo
             ],
         }, cancellationToken: timeoutCts.Token);
 
+        // Tokens are billed even when the response is unusable — carry them so the worker still cost-logs the failure.
+        var inTok = message.Usage.InputTokens;
+        var outTok = message.Usage.OutputTokens;
+        var cost = Pricing.Cost(inTok, outTok, options.InputCostPer1M, options.OutputCostPer1M);
+
         if (message.StopReason == "refusal")
-            throw new SummarizationException("Claude refused to summarize the content");
+            throw new SummarizationException("Claude refused to summarize the content", inTok, outTok, cost);
 
         var json = message.Content.Select(b => b.Value).OfType<TextBlock>().FirstOrDefault()?.Text;
         if (string.IsNullOrWhiteSpace(json))
-            throw new SummarizationException("Claude returned no text content");
+            throw new SummarizationException("Claude returned no text content", inTok, outTok, cost);
 
         SummaryDto? dto;
         try
@@ -57,22 +64,18 @@ public class ClaudeSummarizer(AnthropicClient client, ClaudeOptions options, ILo
         catch (JsonException ex)
         {
             log.LogError("Invalid JSON from Claude: {Body}", json);
-            throw new SummarizationException($"Invalid JSON: {ex.Message}");
+            throw new SummarizationException($"Invalid JSON: {ex.Message}", inTok, outTok, cost);
         }
 
         if (dto is null || string.IsNullOrWhiteSpace(dto.Headline) || string.IsNullOrWhiteSpace(dto.Summary))
-            throw new SummarizationException("Claude response missing headline or summary");
-
-        var cost = Pricing.Cost(
-            message.Usage.InputTokens, message.Usage.OutputTokens,
-            options.InputCostPer1M, options.OutputCostPer1M);
+            throw new SummarizationException("Claude response missing headline or summary", inTok, outTok, cost);
 
         return new SummaryResult(
             dto.Headline.Trim(),
             dto.Summary.Trim(),
             Severity.Normalize(dto.Severity),
-            message.Usage.InputTokens,
-            message.Usage.OutputTokens,
+            inTok,
+            outTok,
             cost);
     }
 

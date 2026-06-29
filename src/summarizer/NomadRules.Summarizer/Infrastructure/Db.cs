@@ -12,6 +12,10 @@ public class Db(IConfiguration config)
     {
         var conn = new SqliteConnection(_connStr);
         conn.Open();
+        // WAL + busy timeout so the worker and the API can write the shared file without "database is locked".
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;";
+        cmd.ExecuteNonQuery();
         return conn;
     }
 }

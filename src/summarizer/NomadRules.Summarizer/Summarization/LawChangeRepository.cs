@@ -42,10 +42,17 @@ public class LawChangeRepository(Db db)
             WHERE id = @id
             """, new { r.Headline, r.Summary, r.Severity, now = Now(), reviewed = reviewed ? 1 : 0, id });
 
+        await InsertCostAsync(id, r.InputTokens, r.OutputTokens, r.CostUsd);
+    }
+
+    // Records Claude token spend for a law change — for successes and for billed-but-unusable responses alike.
+    public async Task InsertCostAsync(string lawChangeId, long inputTokens, long outputTokens, double costUsd)
+    {
+        using var conn = db.Open();
         await conn.ExecuteAsync("""
             INSERT INTO summarizer_costs (id, law_change_id, input_tokens, output_tokens, cost_usd, created_at)
-            VALUES (@cid, @id, @InputTokens, @OutputTokens, @CostUsd, @now)
-            """, new { cid = Guid.NewGuid().ToString(), id, r.InputTokens, r.OutputTokens, r.CostUsd, now = Now() });
+            VALUES (@cid, @lawChangeId, @inputTokens, @outputTokens, @costUsd, @now)
+            """, new { cid = Guid.NewGuid().ToString(), lawChangeId, inputTokens, outputTokens, costUsd, now = Now() });
     }
 
     // Bumps retry_count and defers the next attempt (exponential backoff). Picked up again once next_attempt_at passes.

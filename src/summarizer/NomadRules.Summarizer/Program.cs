@@ -26,6 +26,13 @@ builder.Services.AddHostedService<SummarizerWorker>();
 
 var host = builder.Build();
 
+// Fail fast with a clear message rather than retrying every row into a fallback if the prompt is missing.
+if (!File.Exists(ClaudeSummarizer.PromptPath))
+{
+    Console.Error.WriteLine($"FATAL: summarizer prompt not found at {ClaudeSummarizer.PromptPath}");
+    Environment.Exit(1);
+}
+
 Migrations.Apply(host.Services.GetRequiredService<Db>());
 
 host.Run();

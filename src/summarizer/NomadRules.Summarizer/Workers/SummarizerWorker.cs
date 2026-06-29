@@ -72,6 +72,9 @@ public class SummarizerWorker(
         }
         catch (SummarizationException ex)
         {
+            // The response was billed even though it was unusable — record the spend before retrying.
+            if (ex.InputTokens > 0 || ex.OutputTokens > 0)
+                await repo.InsertCostAsync(row.Id, ex.InputTokens, ex.OutputTokens, ex.CostUsd);
             await HandleFailureAsync(row, ex.Message);
         }
         catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
