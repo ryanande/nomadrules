@@ -1,8 +1,8 @@
-using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace NomadRules.Api.Infrastructure;
 
+// Schema is owned by NomadRules.DbMigrations (run before the API starts).
 public class Db(IConfiguration config)
 {
     private readonly string _connStr = config.GetConnectionString("Sqlite")
@@ -13,13 +13,5 @@ public class Db(IConfiguration config)
         var conn = new SqliteConnection(_connStr);
         conn.Open();
         return conn;
-    }
-
-    public async Task InitializeAsync()
-    {
-        var sql = await File.ReadAllTextAsync(
-            Path.Combine(AppContext.BaseDirectory, "Infrastructure", "schema.sql"));
-        using var conn = Open();
-        await conn.ExecuteAsync(sql);
     }
 }

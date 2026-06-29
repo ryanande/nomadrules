@@ -1,0 +1,17 @@
+# Scaffold values for the NomadRules Helm chart.
+api:
+  replicas: 1
+  image:
+    repository: ghcr.io/ryanande/nomadrules-api
+    tag: latest
+
+migrations:
+  image:
+    repository: ghcr.io/ryanande/nomadrules-dbmigrations
+    tag: latest
+
+observability:
+  # Pushgateway endpoint for ephemeral batch-job metrics (migration runner).
+  pushgatewayUrl: "http://prometheus-pushgateway.nomadrules-data:9091"
+  # OTLP collector for traces -> Jaeger.
+  otlpEndpoint: "http://otel-collector.nomadrules-data:4317"

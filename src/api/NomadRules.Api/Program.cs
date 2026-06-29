@@ -78,9 +78,6 @@ app.UseAuthorization();
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
-var db = app.Services.GetRequiredService<Db>();
-await db.InitializeAsync();
-
 SubscriberEndpoints.Map(app);
 AuthEndpoints.Map(app);
 StripeWebhookEndpoints.Map(app);
