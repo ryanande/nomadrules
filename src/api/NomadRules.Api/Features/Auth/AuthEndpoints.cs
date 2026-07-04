@@ -11,6 +11,7 @@ public static class AuthEndpoints
 
         group.MapPost("/magic-link", SendMagicLink);
         group.MapGet("/verify", Verify);
+        group.MapPost("/logout", Logout);
     }
 
     private static async Task<IResult> SendMagicLink(
@@ -34,14 +35,34 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> Verify(
-        [FromQuery] string token,
-        AuthService authSvc)
+        [FromQuery] string? token,
+        AuthService authSvc,
+        HttpContext ctx)
     {
-        var jwt = await authSvc.VerifyMagicLinkAsync(token);
-        if (jwt is null)
+        if (string.IsNullOrWhiteSpace(token))
+            return Results.BadRequest(new { error = "missing_token", message = "Token is required" });
+
+        var result = await authSvc.VerifyMagicLinkAsync(token);
+        if (result is null)
             return Results.BadRequest(new { error = "invalid_token", message = "Token is invalid or expired" });
 
-        return Results.Ok(new { token = jwt });
+        var (jwt, subscriberId) = result.Value;
+        ctx.Response.Cookies.Append("nr_token", jwt, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = ctx.Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddDays(30),
+            Path = "/",
+        });
+
+        return Results.Ok(new { subscriberId });
+    }
+
+    private static IResult Logout(HttpContext ctx)
+    {
+        ctx.Response.Cookies.Delete("nr_token", new CookieOptions { Path = "/" });
+        return Results.Ok();
     }
 }
 

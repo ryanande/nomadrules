@@ -31,7 +31,7 @@ export function Feed({ subscriberId }: { subscriberId: string }) {
         </p>
       )}
       {items.map((item) => (
-        <Card key={item.changeId}>
+        <Card key={item.id}>
           <CardHeader>
             <CardTitle className="text-base">{item.headline}</CardTitle>
             <p className="text-xs text-muted-foreground">
@@ -39,7 +39,7 @@ export function Feed({ subscriberId }: { subscriberId: string }) {
             </p>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{item.plainEnglishSummary}</p>
+            <p className="text-sm">{item.summary}</p>
           </CardContent>
         </Card>
       ))}

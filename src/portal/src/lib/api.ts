@@ -10,12 +10,11 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('nr_token')
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
+    credentials: 'include', // JWT lives in an httpOnly cookie, not readable/settable from here
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   })
@@ -47,9 +46,9 @@ export interface RenewalMonths {
 }
 
 export interface LawChangeFeedItem {
-  changeId: string
+  id: string
   headline: string
-  plainEnglishSummary: string
+  summary: string
   severity: string
   detectedAt: string
 }
@@ -65,7 +64,9 @@ export const api = {
     }),
 
   verifyMagicLink: (token: string) =>
-    request<{ token: string }>(`/api/auth/verify?token=${encodeURIComponent(token)}`),
+    request<{ subscriberId: string }>(`/api/auth/verify?token=${encodeURIComponent(token)}`),
+
+  logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
 
   getProfile: (id: string) => request<Subscriber>(`/api/subscribers/${id}/profile`),
 
