@@ -3,8 +3,12 @@ using NomadRules.EmailDelivery.Delivery;
 namespace NomadRules.EmailDelivery.Workers;
 
 // One polling worker (design Decision 4). Each tick: due renewal alerts, then urgent law changes
-// (immediate), then — on the digest day — the weekly digest. Idempotency lives in the DB, so running
-// more than once (long-running Deployment or retried CronJob --run-now) is safe.
+// (immediate), then — on the digest day — the weekly digest.
+//
+// Idempotency has two layers: DB reserve rows (INSERT-then-check) guard sequential retries, and a stable
+// Resend Idempotency-Key guards what the DB can't — two OS processes racing past the reserve, or a crash
+// between a successful send and the mark. The provider key is what makes concurrent/retried execution
+// actually safe from duplicate delivery; the DB rows keep our own state consistent.
 public class DeliveryWorker(
     DeliveryRepository repo,
     ResendClient resend,
@@ -47,10 +51,17 @@ public class DeliveryWorker(
     }
 
     // Real clock in prod; NOMADRULES_TODAY (yyyy-MM-dd) overrides it for deterministic local verification.
-    private static DateOnly Today() =>
-        Environment.GetEnvironmentVariable("NOMADRULES_TODAY") is { Length: > 0 } s
-            ? DateOnly.Parse(s)
-            : DateOnly.FromDateTime(DateTime.UtcNow);
+    // A malformed override falls back to the real clock with a warning rather than crashing the tick.
+    private DateOnly Today()
+    {
+        var raw = Environment.GetEnvironmentVariable("NOMADRULES_TODAY");
+        if (string.IsNullOrEmpty(raw))
+            return DateOnly.FromDateTime(DateTime.UtcNow);
+        if (DateOnly.TryParse(raw, out var overridden))
+            return overridden;
+        log.LogWarning("NOMADRULES_TODAY='{Raw}' is not a valid yyyy-MM-dd date; using the real clock", raw);
+        return DateOnly.FromDateTime(DateTime.UtcNow);
+    }
 
     private async Task SendRenewalAlertsAsync(DateOnly today, CancellationToken ct)
     {
@@ -71,7 +82,7 @@ public class DeliveryWorker(
                     continue;
 
                 var (subject, body) = Templates.RenewalAlert(category, offset.Value, month);
-                var ok = await resend.SendAsync(sub.Email, subject, body, ct);
+                var ok = await resend.SendAsync(sub.Email, subject, body, $"renewal:{id}", ct);
                 DeliveryMetrics.Sent("renewal", ok);
                 if (ok)
                 {
@@ -102,7 +113,7 @@ public class DeliveryWorker(
                     continue;
 
                 var (subject, body) = Templates.UrgentAlert(change);
-                var ok = await resend.SendAsync(sub.Email, subject, body, ct);
+                var ok = await resend.SendAsync(sub.Email, subject, body, $"urgent:{id}", ct);
                 DeliveryMetrics.Sent("urgent", ok);
                 if (ok)
                 {
@@ -125,22 +136,26 @@ public class DeliveryWorker(
             var changes = await repo.UnsentLawChangesAsync(sub.Id, sub.State, urgentOnly: false);
             if (changes.Count == 0) continue; // no empty digests (design Risks)
 
+            // Reserve every included change BEFORE sending (symmetric with renewal/urgent). A crash after
+            // the send but before marking leaves these rows unsent, so the unsent query re-selects them next
+            // tick and the identical digest is re-sent under the same Idempotency-Key — Resend dedups it.
+            foreach (var change in changes)
+                await repo.TryReserveNotificationAsync(
+                    IdempotencyKeys.Notification(sub.Id, change.Id), sub.Id, change.Id, "digest");
+
             var (subject, body) = Templates.Digest(sub.State, changes);
-            var ok = await resend.SendAsync(sub.Email, subject, body, ct);
+            var key = IdempotencyKeys.Digest(sub.Id, changes.Select(c => c.Id));
+            var ok = await resend.SendAsync(sub.Email, subject, body, key, ct);
             DeliveryMetrics.Sent("digest", ok);
             if (!ok)
             {
-                log.LogError("Digest send failed: {Sub} ({Count} items) — will retry next digest tick",
+                log.LogError("Digest send failed: {Sub} ({Count} items) — reserved rows stay unsent, retries next tick",
                     sub.Id, changes.Count);
-                continue; // reserve-after-send: no rows written, so the whole digest retries cleanly
+                continue;
             }
 
             foreach (var change in changes)
-            {
-                var id = IdempotencyKeys.Notification(sub.Id, change.Id);
-                await repo.TryReserveNotificationAsync(id, sub.Id, change.Id, "digest");
-                await repo.MarkNotificationSentAsync(id);
-            }
+                await repo.MarkNotificationSentAsync(IdempotencyKeys.Notification(sub.Id, change.Id));
             log.LogInformation("Digest sent: {Sub} ({Count} items)", sub.Id, changes.Count);
         }
     }

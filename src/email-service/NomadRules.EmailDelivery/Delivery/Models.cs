@@ -63,4 +63,9 @@ public static class IdempotencyKeys
     // Deterministic PK for notifications — UNIQUE(subscriber, law_change) is the real guard.
     public static string Notification(string subscriberId, string lawChangeId)
         => $"{subscriberId}:{lawChangeId}";
+
+    // Stable Resend Idempotency-Key for a digest: same subscriber + same set of change ids => same key,
+    // so a crash-then-retry of the identical digest is deduped by Resend. Order-independent (sorted).
+    public static string Digest(string subscriberId, IEnumerable<string> lawChangeIds)
+        => $"digest:{subscriberId}:{string.Join(",", lawChangeIds.OrderBy(x => x, StringComparer.Ordinal))}";
 }

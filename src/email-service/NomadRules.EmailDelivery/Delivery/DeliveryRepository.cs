@@ -3,16 +3,24 @@ using NomadRules.EmailDelivery.Infrastructure;
 
 namespace NomadRules.EmailDelivery.Delivery;
 
-// ponytail: no row locking — v0.1 runs a single worker/CronJob. The UNIQUE constraints (not app memory)
-// are what make concurrent or retried runs safe.
+// ponytail: no row locking — v0.1 runs a single worker/CronJob. Cross-process duplicate delivery is
+// guarded by the Resend Idempotency-Key at the provider, not by app memory or DB row locks.
 public class DeliveryRepository(Db db)
 {
     private static string Now() => DateTime.UtcNow.ToString("o");
 
-    // Subscribers with a non-null renewal month for the given category. `column` comes from the fixed
-    // Categories list, never user input — safe to interpolate.
+    // The only renewal-month columns we ever interpolate. Guards the raw-SQL build below against any
+    // future caller passing an unvetted column name.
+    private static readonly HashSet<string> AllowedRenewalColumns =
+        Categories.All.Select(c => c.Column).ToHashSet();
+
+    // Subscribers with a non-null renewal month for the given category. `column` must be one of the fixed
+    // Categories columns — interpolated into SQL, so it is allowlisted rather than trusted.
     public async Task<IReadOnlyList<SubscriberRow>> SubscribersWithRenewalAsync(string column)
     {
+        if (!AllowedRenewalColumns.Contains(column))
+            throw new ArgumentException($"Unknown renewal column '{column}'", nameof(column));
+
         using var conn = db.Open();
         var rows = await conn.QueryAsync<SubscriberRow>($"""
             SELECT id AS Id, email AS Email, state AS State, {column} AS RenewalMonth
@@ -66,7 +74,9 @@ public class DeliveryRepository(Db db)
               AND reviewed = 1
               AND state = @state
               {severityFilter}
-              AND id NOT IN (SELECT law_change_id FROM notifications WHERE subscriber_id = @subscriberId)
+              AND id NOT IN (
+                SELECT law_change_id FROM notifications
+                WHERE subscriber_id = @subscriberId AND sent_at IS NOT NULL)
             ORDER BY detected_at
             """, new { subscriberId, state });
         return rows.AsList();

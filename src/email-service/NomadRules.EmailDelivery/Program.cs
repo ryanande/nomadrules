@@ -99,6 +99,11 @@ static class SelfCheck
         Trap(IdempotencyKeys.RenewalAlert("s1", "insurance", 60, 2026) == "s1:insurance:60:2026");
         Trap(IdempotencyKeys.RenewalAlert("s1", "insurance", 60, 2026)
              != IdempotencyKeys.RenewalAlert("s1", "insurance", 30, 2026));
+        // Digest key: order-independent (same change set -> same key, so a crash-retry is deduped by Resend),
+        // and distinct when the change set differs.
+        Trap(IdempotencyKeys.Digest("s1", ["c2", "c1"]) == IdempotencyKeys.Digest("s1", ["c1", "c2"]));
+        Trap(IdempotencyKeys.Digest("s1", ["c1"]) != IdempotencyKeys.Digest("s1", ["c1", "c2"]));
+
         Trap(IdempotencyKeys.Notification("s1", "c1") == "s1:c1");
         Trap(IdempotencyKeys.Notification("s1", "c1") != IdempotencyKeys.Notification("s1", "c2"));
 

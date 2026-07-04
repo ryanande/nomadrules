@@ -15,17 +15,15 @@ public static class Migrations
 
         // Email delivery reads subscribers, law_changes, notifications — all API-owned. Fail with a clear
         // message instead of a cryptic "no such table" the first time we query them.
-        var subscribersExist = conn.ExecuteScalar<long>(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='subscribers'") > 0;
-        if (!subscribersExist)
-            throw new InvalidOperationException(
-                "subscribers table not found. Run db-migrations (or start the API) to create the schema before email delivery.");
+        RequireTable(conn, "subscribers");
+        RequireTable(conn, "law_changes");
+        RequireTable(conn, "notifications");
 
         // Delivery filters law_changes on `reviewed = 1` — a column the summarizer adds via its own
         // self-migration. Ensure it exists so delivery doesn't crash on a DB where the summarizer
         // hasn't run yet. Idempotent; matches the summarizer's DDL (0 = held for manual review).
         var lawCols = conn.Query<string>("SELECT name FROM pragma_table_info('law_changes')").AsList();
-        if (lawCols.Count > 0 && !lawCols.Contains("reviewed"))
+        if (!lawCols.Contains("reviewed"))
             conn.Execute("ALTER TABLE law_changes ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0");
 
         conn.Execute("""
@@ -39,5 +37,14 @@ public static class Migrations
               UNIQUE(subscriber_id, category, trigger_offset, renewal_year)
             )
             """);
+    }
+
+    private static void RequireTable(Microsoft.Data.Sqlite.SqliteConnection conn, string name)
+    {
+        var exists = conn.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name", new { name }) > 0;
+        if (!exists)
+            throw new InvalidOperationException(
+                $"{name} table not found. Run db-migrations (or start the API) to create the schema before email delivery.");
     }
 }
