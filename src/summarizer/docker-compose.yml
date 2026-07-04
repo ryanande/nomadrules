@@ -1,0 +1,17 @@
+# Local-dev runner for the summarizer worker. Mounts a host directory holding the
+# shared SQLite file (the same DB the API writes) so the worker can read law_changes.
+#
+#   ANTHROPIC_API_KEY=sk-ant-... NR_DB_DIR=../api/NomadRules.Api docker compose up --build
+#
+services:
+  summarizer:
+    build: ./NomadRules.Summarizer
+    container_name: nomadrules-summarizer
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      ConnectionStrings__Sqlite: "Data Source=/data/nomadrules.db"
+      Claude__Model: ${CLAUDE_MODEL:-claude-opus-4-8}
+    volumes:
+      # Host directory containing nomadrules.db -> /data in the container.
+      - ${NR_DB_DIR:-../api/NomadRules.Api}:/data
+    restart: unless-stopped

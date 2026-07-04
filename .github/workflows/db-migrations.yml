@@ -1,0 +1,35 @@
+# Scaffold: build + push the DbUp migration runner image, tagged with the commit SHA.
+name: db-migrations-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/db-migrations/**"
+      - ".github/workflows/db-migrations.yml"
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/nomadrules-dbmigrations
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: src/db-migrations/NomadRules.DbMigrations
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest

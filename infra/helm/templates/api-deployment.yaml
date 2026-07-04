@@ -1,0 +1,52 @@
+# Scaffold: API Deployment with the DbUp migration runner as an init container.
+# The init container runs to completion (exit 0) before the API container starts,
+# guaranteeing the schema is applied. See openspec/changes/db-migrations-dbup/design.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  namespace: nomadrules-services
+spec:
+  replicas: {{ .Values.api.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: nomadrules-api
+  template:
+    metadata:
+      labels:
+        app: nomadrules-api
+    spec:
+      initContainers:
+        - name: db-migrations
+          image: "{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
+          env:
+            - name: SQLITE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: nomadrules-secrets
+                  key: sqlite-connection-string
+            - name: PUSHGATEWAY_URL
+              value: {{ .Values.observability.pushgatewayUrl | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otlpEndpoint | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ConnectionStrings__Sqlite
+              valueFrom:
+                secretKeyRef:
+                  name: nomadrules-secrets
+                  key: sqlite-connection-string
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nomadrules-data
