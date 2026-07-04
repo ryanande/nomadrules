@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/api/">
+    <Project Path="src/api/NomadRules.Api/NomadRules.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/db-migrations/">
+    <Project Path="src/db-migrations/NomadRules.DbMigrations/NomadRules.DbMigrations.csproj" />
+  </Folder>
+  <Folder Name="/src/summarizer/">
+    <Project Path="src/summarizer/NomadRules.Summarizer/NomadRules.Summarizer.csproj" />
+  </Folder>
+</Solution>
