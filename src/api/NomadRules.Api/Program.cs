@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -42,13 +43,22 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddRateLimiter(o =>
 {
-    o.AddFixedWindowLimiter("api", opts =>
-    {
-        opts.PermitLimit = 100;
-        opts.Window = TimeSpan.FromMinutes(1);
-        opts.QueueLimit = 0;
-    });
     o.RejectionStatusCode = 429;
+    // Global limiter: 100 req/min per client IP. Stripe webhooks are exempt
+    // (Stripe has its own retry/backoff and is signature-verified).
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        if (ctx.Request.Path.StartsWithSegments("/webhooks"))
+            return RateLimitPartition.GetNoLimiter("webhooks");
+
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
 });
 
 builder.Services.AddOpenApi();

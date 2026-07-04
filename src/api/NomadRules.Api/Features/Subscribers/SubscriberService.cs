@@ -41,7 +41,8 @@ public class SubscriberService(Db db)
               (@Id, @Email, @State, @InsuranceRenewalMonth, @RegistrationRenewalMonth,
                @LicenseRenewalMonth, @TaxDueMonth, 'free', datetime('now'), datetime('now'))
             """, sub);
-        return sub;
+        // Re-read so the response carries DB-set timestamps (created_at/updated_at).
+        return (await GetByIdAsync(sub.Id))!;
     }
 
     public async Task<Subscriber> UpdateAsync(string id, UpdateProfileRequest req)
