@@ -1,0 +1,39 @@
+# Daily email-delivery pass. Idempotency lives in the DB (renewal_alerts + notifications UNIQUE
+# constraints), so a retried CronJob is safe — it runs one `--run-now` pass and exits.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-email-delivery
+  namespace: nomadrules-services
+spec:
+  schedule: {{ .Values.emailDelivery.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: email-delivery
+              image: "{{ .Values.emailDelivery.image.repository }}:{{ .Values.emailDelivery.image.tag }}"
+              args: ["--run-now"]
+              env:
+                - name: ConnectionStrings__Sqlite
+                  valueFrom:
+                    secretKeyRef:
+                      name: nomadrules-secrets
+                      key: sqlite-connection-string
+                - name: RESEND_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: nomadrules-secrets
+                      key: resend-api-key
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: {{ .Values.observability.otlpEndpoint | quote }}
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: nomadrules-data

@@ -10,6 +10,13 @@ migrations:
     repository: ghcr.io/ryanande/nomadrules-dbmigrations
     tag: latest
 
+emailDelivery:
+  # Daily at 09:00 UTC; the worker only sends the digest on its configured DigestDayOfWeek (Friday).
+  schedule: "0 9 * * *"
+  image:
+    repository: ghcr.io/ryanande/nomadrules-email-delivery
+    tag: latest
+
 observability:
   # Pushgateway endpoint for ephemeral batch-job metrics (migration runner).
   pushgatewayUrl: "http://prometheus-pushgateway.nomadrules-data:9091"
