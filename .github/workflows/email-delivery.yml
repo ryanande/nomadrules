@@ -1,0 +1,35 @@
+# Scaffold: build + push the email-delivery worker image, tagged with the commit SHA.
+name: email-delivery-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/email-service/**"
+      - ".github/workflows/email-delivery.yml"
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/nomadrules-email-delivery
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: src/email-service/NomadRules.EmailDelivery
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
