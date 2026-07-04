@@ -28,6 +28,20 @@ dotnet run
 | `Summarizer:QuotaBackoffMinutes` | `60` | On a 429 the row is deferred this long (no retry burned). |
 | `Summarizer:ReviewThreshold` | `10` | First N summaries are held (`reviewed = 0`) for manual approval. |
 
+## Secrets & deployment
+
+`ANTHROPIC_API_KEY` (and the DB connection string) are the only secrets. Where the key belongs by environment:
+
+| Environment | How to supply the key |
+|-------------|-----------------------|
+| **Local dev / live test** | `export ANTHROPIC_API_KEY=sk-ant-...` — the worker reads it by default. Don't put it in `appsettings.json`. |
+| **Production (K8s)** | A **Kubernetes Secret** injected as the `ANTHROPIC_API_KEY` env var into the summarizer Deployment. Source the value from **Key Vault** (external-secrets operator or the CSV/CSI secret-store driver) — do **not** hardcode it in Helm values or commit it. |
+| **GitHub Actions** | Not needed — no workflow calls Claude (build + `--selfcheck` don't touch the API). Only add `secrets.ANTHROPIC_API_KEY` if you introduce a workflow that hits the live API, and gate that job to `workflow_dispatch`/scheduled (not every PR) so cost stays bounded. |
+
+The worker fails fast at startup if no key is configured (`FATAL: no Claude API key configured ...`).
+
+> **Deployment TODO:** wire the Key Vault → K8s Secret → Deployment env path (external-secrets) when the summarizer's Helm chart is added under `infra/helm/`.
+
 ## Schema
 
 The worker owns additive columns on `law_changes` (`retry_count`, `reviewed`, `hallucination`,
