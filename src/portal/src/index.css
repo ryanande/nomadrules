@@ -5,6 +5,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* RV brand palette — raw tokens (bg-rv-rust, text-rv-forest, etc.) alongside
+   the semantic shadcn tokens below, which are remapped to the same colors. */
+@theme {
+    --color-rv-bg: #F7F5F0;
+    --color-rv-bg-card: #E1DDD6;
+    --color-rv-forest: #243D27;
+    --color-rv-forest-light: #325636;
+    --color-rv-rust: #C86432;
+    --color-rv-rust-dark: #AA4E22;
+    --color-rv-blue: #1C698D;
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
@@ -49,24 +61,24 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --background: var(--color-rv-bg);
+    --foreground: var(--color-rv-forest);
+    --card: var(--color-rv-bg);
+    --card-foreground: var(--color-rv-forest);
+    --popover: var(--color-rv-bg);
+    --popover-foreground: var(--color-rv-forest);
+    --primary: var(--color-rv-rust);
+    --primary-foreground: #FFFFFF;
+    --secondary: var(--color-rv-forest-light);
+    --secondary-foreground: #FFFFFF;
+    --muted: var(--color-rv-bg-card);
+    --muted-foreground: var(--color-rv-forest-light);
+    --accent: var(--color-rv-bg-card);
+    --accent-foreground: var(--color-rv-forest);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --border: var(--color-rv-bg-card);
+    --input: var(--color-rv-bg-card);
+    --ring: var(--color-rv-blue);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
