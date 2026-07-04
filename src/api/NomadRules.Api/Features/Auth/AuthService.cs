@@ -11,7 +11,7 @@ public class AuthService(Db db, IConfiguration config)
 {
     private readonly string _jwtSecret = config["Jwt:Secret"]
         ?? throw new InvalidOperationException("Jwt:Secret not configured");
-    private readonly string _appUrl = config["AppUrl"] ?? "http://localhost:5000";
+    private readonly string _portalOrigin = config["PortalOrigin"] ?? "http://localhost:5173";
 
     public async Task<string> CreateMagicLinkAsync(string subscriberId)
     {
@@ -24,10 +24,13 @@ public class AuthService(Db db, IConfiguration config)
             VALUES (@token, @subscriberId, datetime('now', '+24 hours'), 0)
             """, new { token, subscriberId });
 
-        return $"{_appUrl}/api/auth/verify?token={token}";
+        // No /api prefix: this must never collide with a real backend route, since
+        // AppUrl and PortalOrigin are the same domain in prod and a path-based
+        // ingress could route /api/* straight to the backend, bypassing the portal.
+        return $"{_portalOrigin}/verify?token={token}";
     }
 
-    public async Task<string?> VerifyMagicLinkAsync(string token)
+    public async Task<(string Jwt, string SubscriberId)?> VerifyMagicLinkAsync(string token)
     {
         using var conn = db.Open();
         var link = await conn.QuerySingleOrDefaultAsync("""
@@ -44,7 +47,8 @@ public class AuthService(Db db, IConfiguration config)
         await conn.ExecuteAsync(
             "UPDATE magic_links SET used = 1 WHERE token = @token", new { token });
 
-        return IssueJwt((string)link.subscriber_id);
+        string subscriberId = link.subscriber_id;
+        return (IssueJwt(subscriberId), subscriberId);
     }
 
     private string IssueJwt(string subscriberId)
