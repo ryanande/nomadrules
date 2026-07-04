@@ -56,7 +56,7 @@ public class SubscriberService(Db db)
               tax_due_month               = COALESCE(@TaxDueMonth, tax_due_month),
               updated_at                  = datetime('now')
             WHERE id = @Id
-            """, new { id, req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
+            """, new { Id = id, req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
                        req.LicenseRenewalMonth, req.TaxDueMonth });
 
         return (await GetByIdAsync(id))!;
