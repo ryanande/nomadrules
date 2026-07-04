@@ -26,16 +26,30 @@ builder.Services.AddHostedService<SummarizerWorker>();
 
 var host = builder.Build();
 
-// Fail fast with a clear message rather than retrying every row into a fallback if the prompt is missing.
+// Fail fast with clear messages instead of surfacing misconfig as endless retries/fallbacks later.
 if (!File.Exists(ClaudeSummarizer.PromptPath))
+    Fatal($"summarizer prompt not found at {ClaudeSummarizer.PromptPath}");
+
+if (string.IsNullOrWhiteSpace(claude.ApiKey) &&
+    string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")))
+    Fatal("no Claude API key configured (set Claude:ApiKey or the ANTHROPIC_API_KEY env var)");
+
+try
 {
-    Console.Error.WriteLine($"FATAL: summarizer prompt not found at {ClaudeSummarizer.PromptPath}");
-    Environment.Exit(1);
+    Migrations.Apply(host.Services.GetRequiredService<Db>());
+}
+catch (Exception ex)
+{
+    Fatal(ex.Message);
 }
 
-Migrations.Apply(host.Services.GetRequiredService<Db>());
-
 host.Run();
+
+static void Fatal(string message)
+{
+    Console.Error.WriteLine($"FATAL: {message}");
+    Environment.Exit(1);
+}
 
 // Minimal runnable check for the pure logic — `dotnet run -- --selfcheck`. No test framework.
 static class SelfCheck

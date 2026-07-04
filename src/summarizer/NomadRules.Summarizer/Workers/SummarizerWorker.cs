@@ -36,8 +36,17 @@ public class SummarizerWorker(
                 continue;
             }
 
-            await ProcessAsync(row, stoppingToken);
-            // Loop straight back to drain any backlog; only Sleep when the queue is empty.
+            // Guard the whole item: a repo failure inside failure-handling must not fault the BackgroundService.
+            try
+            {
+                await ProcessAsync(row, stoppingToken);
+                // Loop straight back to drain any backlog; only Sleep when the queue is empty.
+            }
+            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+            {
+                log.LogError(ex, "Unhandled error processing {Id}; backing off before continuing", row.Id);
+                await Sleep(stoppingToken); // avoid a tight error loop on the same row
+            }
         }
     }
 
@@ -45,7 +54,7 @@ public class SummarizerWorker(
     {
         try
         {
-            var processedBefore = await repo.CountProcessedAsync();
+            var processedBefore = await repo.CountSummarizedAsync();
             var result = await summarizer.SummarizeAsync(row.RawContent, stoppingToken);
 
             var hold = ReviewGate.ShouldHold(processedBefore, options.ReviewThreshold);

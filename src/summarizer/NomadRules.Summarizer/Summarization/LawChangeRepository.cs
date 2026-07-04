@@ -24,25 +24,31 @@ public class LawChangeRepository(Db db)
             """, new { attemptsAllowed, now = Now() });
     }
 
-    // Rows already summarized (used by the first-N review gate).
-    public async Task<int> CountProcessedAsync()
+    // Count of successful summaries for the first-N review gate. Excludes fallback rows (summary IS NULL),
+    // so failed rows don't consume review slots.
+    public async Task<int> CountSummarizedAsync()
     {
         using var conn = db.Open();
         return await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM law_changes WHERE processed_at IS NOT NULL");
+            "SELECT COUNT(*) FROM law_changes WHERE processed_at IS NOT NULL AND summary IS NOT NULL");
     }
 
     public async Task MarkSuccessAsync(string id, SummaryResult r, bool reviewed)
     {
+        // Atomic: a crash between the update and the cost insert must not leave a processed row with no cost record.
         using var conn = db.Open();
+        using var tx = conn.BeginTransaction();
         await conn.ExecuteAsync("""
             UPDATE law_changes
             SET headline = @Headline, summary = @Summary, severity = @Severity,
                 processed_at = @now, reviewed = @reviewed, next_attempt_at = NULL
             WHERE id = @id
-            """, new { r.Headline, r.Summary, r.Severity, now = Now(), reviewed = reviewed ? 1 : 0, id });
-
-        await InsertCostAsync(id, r.InputTokens, r.OutputTokens, r.CostUsd);
+            """, new { r.Headline, r.Summary, r.Severity, now = Now(), reviewed = reviewed ? 1 : 0, id }, tx);
+        await conn.ExecuteAsync("""
+            INSERT INTO summarizer_costs (id, law_change_id, input_tokens, output_tokens, cost_usd, created_at)
+            VALUES (@cid, @id, @InputTokens, @OutputTokens, @CostUsd, @now)
+            """, new { cid = Guid.NewGuid().ToString(), id, r.InputTokens, r.OutputTokens, r.CostUsd, now = Now() }, tx);
+        tx.Commit();
     }
 
     // Records Claude token spend for a law change — for successes and for billed-but-unusable responses alike.
@@ -72,7 +78,7 @@ public class LawChangeRepository(Db db)
         await conn.ExecuteAsync("""
             UPDATE law_changes
             SET headline = '[Unable to summarize - raw content follows]',
-                severity = 'routine', processed_at = @now, reviewed = 0
+                summary = NULL, severity = 'routine', processed_at = @now, reviewed = 0
             WHERE id = @id
             """, new { now = Now(), id });
     }

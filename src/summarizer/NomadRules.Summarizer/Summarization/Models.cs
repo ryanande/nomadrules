@@ -17,8 +17,8 @@ public class ClaudeOptions
     public int TimeoutSeconds { get; set; } = 30;
 }
 
-// A row claimed for summarization.
-public record LawChangeRow(string Id, string RawContent, int RetryCount);
+// A row claimed for summarization. RetryCount is long to match SQLite INTEGER (Dapper requires an exact type match).
+public record LawChangeRow(string Id, string RawContent, long RetryCount);
 
 // Parsed Claude output plus usage/cost for one summary.
 public record SummaryResult(

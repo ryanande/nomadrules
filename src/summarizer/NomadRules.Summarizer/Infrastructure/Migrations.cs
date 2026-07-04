@@ -10,6 +10,14 @@ public static class Migrations
     {
         using var conn = db.Open();
 
+        // The summarizer augments the API-owned law_changes table; it must exist first.
+        // Fail with a clear message instead of a cryptic "no such table" from the ALTER below.
+        var tableExists = conn.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='law_changes'") > 0;
+        if (!tableExists)
+            throw new InvalidOperationException(
+                "law_changes table not found. Start the API or run db-migrations to create the schema before the summarizer.");
+
         var cols = conn.Query<string>("SELECT name FROM pragma_table_info('law_changes')").AsList();
 
         void AddColumn(string name, string ddl)

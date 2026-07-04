@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Local-dev runner for the summarizer worker. Mounts a host directory holding the
 # shared SQLite file (the same DB the API writes) so the worker can read law_changes.
 #
