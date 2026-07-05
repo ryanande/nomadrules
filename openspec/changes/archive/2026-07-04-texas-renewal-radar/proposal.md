@@ -1,5 +1,18 @@
 # Proposal: Texas Renewal Radar MVP
 
+> **SUPERSEDED (2026-07-04).** This umbrella epic has been delivered piecemeal by focused per-capability
+> changes, which are now the unit of work. Archived to keep the active backlog honest.
+>
+> | Capability | Delivered by |
+> |---|---|
+> | subscriber-api | subscriber API + DbUp migration runner (#1) |
+> | law-change-summarizer | summarizer service |
+> | digest-delivery + renewal-radar | email-delivery-service (#3), archived |
+> | subscriber-portal + renewal-calendar-tool | subscriber portal (#4) |
+> | law-change-crawler | scaffolded (crawler service); a focused change tracks completion |
+>
+> Retained for historical context and the original architecture references below.
+
 **For full architectural context, see:**
 - **/.claude/CLAUDE.md** — System identity, principles, service contracts
 - **/.claude/ARCHITECTURE.md** — 5-level progressive disclosure (identity → high-level → services → deployment → implementation)
