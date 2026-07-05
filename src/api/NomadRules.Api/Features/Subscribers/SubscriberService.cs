@@ -37,34 +37,52 @@ public class SubscriberService(Db db)
             RegistrationRenewalMonth = req.RegistrationRenewalMonth,
             LicenseRenewalMonth = req.LicenseRenewalMonth,
             TaxDueMonth = req.TaxDueMonth,
+            InsuranceRenewalDay = req.InsuranceRenewalDay,
+            RegistrationRenewalDay = req.RegistrationRenewalDay,
+            LicenseRenewalDay = req.LicenseRenewalDay,
+            TaxDueDay = req.TaxDueDay,
         };
 
         using var conn = db.Open();
         await conn.ExecuteAsync("""
             INSERT INTO subscribers
               (id, email, state, insurance_renewal_month, registration_renewal_month,
-               license_renewal_month, tax_due_month, tier, created_at, updated_at)
+               license_renewal_month, tax_due_month,
+               insurance_renewal_day, registration_renewal_day, license_renewal_day, tax_due_day,
+               tier, created_at, updated_at)
             VALUES
               (@Id, @Email, @State, @InsuranceRenewalMonth, @RegistrationRenewalMonth,
-               @LicenseRenewalMonth, @TaxDueMonth, 'free', datetime('now'), datetime('now'))
+               @LicenseRenewalMonth, @TaxDueMonth,
+               @InsuranceRenewalDay, @RegistrationRenewalDay, @LicenseRenewalDay, @TaxDueDay,
+               'free', datetime('now'), datetime('now'))
             """, sub);
         // Re-read so the response carries DB-set timestamps (created_at/updated_at).
         return (await GetByIdAsync(sub.Id))!;
     }
 
+    // Full replace of the renewal fields (PUT semantics): the request carries the subscriber's complete
+    // desired renewal state, so each column is set directly rather than COALESCE-merged. This is what lets
+    // the profile form clear a date (send NULL -> stored NULL) and means the validated request IS the row
+    // that gets stored — no month/day pair can be assembled from a partial merge that was never validated.
     public async Task<Subscriber> UpdateAsync(string id, UpdateProfileRequest req)
     {
         using var conn = db.Open();
         await conn.ExecuteAsync("""
             UPDATE subscribers SET
-              insurance_renewal_month     = COALESCE(@InsuranceRenewalMonth, insurance_renewal_month),
-              registration_renewal_month  = COALESCE(@RegistrationRenewalMonth, registration_renewal_month),
-              license_renewal_month       = COALESCE(@LicenseRenewalMonth, license_renewal_month),
-              tax_due_month               = COALESCE(@TaxDueMonth, tax_due_month),
+              insurance_renewal_month     = @InsuranceRenewalMonth,
+              registration_renewal_month  = @RegistrationRenewalMonth,
+              license_renewal_month       = @LicenseRenewalMonth,
+              tax_due_month               = @TaxDueMonth,
+              insurance_renewal_day       = @InsuranceRenewalDay,
+              registration_renewal_day    = @RegistrationRenewalDay,
+              license_renewal_day         = @LicenseRenewalDay,
+              tax_due_day                 = @TaxDueDay,
               updated_at                  = datetime('now')
             WHERE id = @Id
             """, new { Id = id, req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
-                       req.LicenseRenewalMonth, req.TaxDueMonth });
+                       req.LicenseRenewalMonth, req.TaxDueMonth,
+                       req.InsuranceRenewalDay, req.RegistrationRenewalDay,
+                       req.LicenseRenewalDay, req.TaxDueDay });
 
         return (await GetByIdAsync(id))!;
     }

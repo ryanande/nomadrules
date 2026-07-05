@@ -44,14 +44,23 @@ export interface Subscriber {
   registrationRenewalMonth: number | null
   licenseRenewalMonth: number | null
   taxDueMonth: number | null
+  insuranceRenewalDay: number | null
+  registrationRenewalDay: number | null
+  licenseRenewalDay: number | null
+  taxDueDay: number | null
   tier: string
 }
 
-export interface RenewalMonths {
+// Renewals recur annually — we store month+day, the year is ignored. Day is null for month-only entries.
+export interface RenewalDates {
   insuranceRenewalMonth: number | null
+  insuranceRenewalDay: number | null
   registrationRenewalMonth: number | null
+  registrationRenewalDay: number | null
   licenseRenewalMonth: number | null
+  licenseRenewalDay: number | null
   taxDueMonth: number | null
+  taxDueDay: number | null
 }
 
 export interface LawChangeFeedItem {
@@ -63,7 +72,7 @@ export interface LawChangeFeedItem {
 }
 
 export const api = {
-  register: (body: { email: string; state: string } & RenewalMonths) =>
+  register: (body: { email: string; state: string } & RenewalDates) =>
     request<Subscriber>('/api/subscribers', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -74,7 +83,7 @@ export const api = {
 
   getProfile: (id: string) => request<Subscriber>(`/api/subscribers/${id}/profile`),
 
-  updateProfile: (id: string, body: RenewalMonths) =>
+  updateProfile: (id: string, body: RenewalDates) =>
     request<Subscriber>(`/api/subscribers/${id}/profile`, {
       method: 'PUT',
       body: JSON.stringify(body),

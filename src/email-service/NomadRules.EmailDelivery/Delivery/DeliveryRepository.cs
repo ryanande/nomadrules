@@ -9,34 +9,35 @@ public class DeliveryRepository(Db db)
 {
     private static string Now() => DateTime.UtcNow.ToString("o");
 
-    // The only renewal-month columns we ever interpolate. Guards the raw-SQL build below against any
-    // future caller passing an unvetted column name.
+    // The only renewal columns we ever interpolate. Guards the raw-SQL build below against any future caller
+    // passing an unvetted column name.
     private static readonly HashSet<string> AllowedRenewalColumns =
-        Categories.All.Select(c => c.Column).ToHashSet();
+        Categories.All.SelectMany(c => new[] { c.MonthColumn, c.DayColumn }).ToHashSet();
 
-    // Subscribers with a non-null renewal month for the given category. `column` must be one of the fixed
-    // Categories columns — interpolated into SQL, so it is allowlisted rather than trusted.
-    public async Task<IReadOnlyList<SubscriberRow>> SubscribersWithRenewalAsync(string column)
+    // Subscribers with a non-null renewal month for the given category, with their optional renewal day.
+    // Both columns come from the fixed Categories list — interpolated into SQL, so they are allowlisted
+    // rather than trusted.
+    public async Task<IReadOnlyList<SubscriberRow>> SubscribersWithRenewalAsync(string monthColumn, string dayColumn)
     {
-        if (!AllowedRenewalColumns.Contains(column))
-            throw new ArgumentException($"Unknown renewal column '{column}'", nameof(column));
+        if (!AllowedRenewalColumns.Contains(monthColumn) || !AllowedRenewalColumns.Contains(dayColumn))
+            throw new ArgumentException($"Unknown renewal column '{monthColumn}'/'{dayColumn}'");
 
         using var conn = db.Open();
         var rows = await conn.QueryAsync<SubscriberRow>($"""
-            SELECT id AS Id, email AS Email, state AS State, {column} AS RenewalMonth
+            SELECT id AS Id, email AS Email, state AS State, {monthColumn} AS RenewalMonth, {dayColumn} AS RenewalDay
             FROM subscribers
-            WHERE {column} IS NOT NULL
+            WHERE {monthColumn} IS NOT NULL
             """);
         return rows.AsList();
     }
 
-    // All subscribers, for state-matched digest/urgent delivery. RenewalMonth is unused here — we project
-    // a real nullable INTEGER column (not an untyped NULL, which Dapper can't map to long?).
-    public async Task<IReadOnlyList<SubscriberRow>> AllSubscribersAsync()
+    // All subscribers, for state-matched digest/urgent delivery. Returns only contact fields — no renewal
+    // columns, so nothing here can be misread as a subscriber's renewal month/day.
+    public async Task<IReadOnlyList<SubscriberContact>> AllSubscribersAsync()
     {
         using var conn = db.Open();
-        var rows = await conn.QueryAsync<SubscriberRow>(
-            "SELECT id AS Id, email AS Email, state AS State, insurance_renewal_month AS RenewalMonth FROM subscribers");
+        var rows = await conn.QueryAsync<SubscriberContact>(
+            "SELECT id AS Id, email AS Email, state AS State FROM subscribers");
         return rows.AsList();
     }
 

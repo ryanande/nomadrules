@@ -25,12 +25,8 @@ public static class SubscriberEndpoints
         if (string.IsNullOrWhiteSpace(req.State))
             return Results.BadRequest(new { error = "invalid_state", message = "State is required" });
 
-        foreach (var month in new[] { req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
-                                       req.LicenseRenewalMonth, req.TaxDueMonth })
-        {
-            if (month is < 1 or > 12)
-                return Results.BadRequest(new { error = "invalid_month", message = "Month must be 1-12" });
-        }
+        if (RenewalValidation.Validate(req) is { } err)
+            return Results.BadRequest(new { error = "invalid_renewal", message = err });
 
         if (await svc.GetByEmailAsync(req.Email) is not null)
             return Results.Conflict(new { error = "duplicate_email", message = "Email already registered" });
@@ -57,12 +53,8 @@ public static class SubscriberEndpoints
     {
         if (!await IsAuthorizedAsync(user, id, svc)) return Results.Forbid();
 
-        foreach (var month in new[] { req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
-                                       req.LicenseRenewalMonth, req.TaxDueMonth })
-        {
-            if (month is < 1 or > 12)
-                return Results.BadRequest(new { error = "invalid_month", message = "Month must be 1-12" });
-        }
+        if (RenewalValidation.Validate(req) is { } err)
+            return Results.BadRequest(new { error = "invalid_renewal", message = err });
 
         if (await svc.GetByIdAsync(id) is null) return Results.NotFound();
         var updated = await svc.UpdateAsync(id, req);

@@ -6,14 +6,22 @@ public record RegisterRequest(
     int? InsuranceRenewalMonth,
     int? RegistrationRenewalMonth,
     int? LicenseRenewalMonth,
-    int? TaxDueMonth
+    int? TaxDueMonth,
+    int? InsuranceRenewalDay = null,
+    int? RegistrationRenewalDay = null,
+    int? LicenseRenewalDay = null,
+    int? TaxDueDay = null
 );
 
 public record UpdateProfileRequest(
     int? InsuranceRenewalMonth,
     int? RegistrationRenewalMonth,
     int? LicenseRenewalMonth,
-    int? TaxDueMonth
+    int? TaxDueMonth,
+    int? InsuranceRenewalDay = null,
+    int? RegistrationRenewalDay = null,
+    int? LicenseRenewalDay = null,
+    int? TaxDueDay = null
 );
 
 public class Subscriber
@@ -25,6 +33,10 @@ public class Subscriber
     public int? RegistrationRenewalMonth { get; set; }
     public int? LicenseRenewalMonth { get; set; }
     public int? TaxDueMonth { get; set; }
+    public int? InsuranceRenewalDay { get; set; }
+    public int? RegistrationRenewalDay { get; set; }
+    public int? LicenseRenewalDay { get; set; }
+    public int? TaxDueDay { get; set; }
     public string Tier { get; set; } = "free";
     public string? StripeCustomerId { get; set; }
     public string? StripeSubscriptionId { get; set; }

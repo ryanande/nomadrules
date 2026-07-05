@@ -80,12 +80,20 @@ static class SelfCheck
     {
         var today = new DateOnly(2026, 7, 4);
 
-        // Anchor: future month this year
-        Trap(RenewalTriggers.Anchor(9, today) == new DateOnly(2026, 9, 1));
-        // Anchor: month already passed -> rolls to next year
-        Trap(RenewalTriggers.Anchor(3, today) == new DateOnly(2027, 3, 1));
-        // Anchor: current month, day past the 1st -> already passed, rolls forward
-        Trap(RenewalTriggers.Anchor(7, today) == new DateOnly(2027, 7, 1));
+        // Anchor, null day -> falls back to the 1st (prior month-only behavior, unchanged):
+        Trap(RenewalTriggers.Anchor(9, null, today) == new DateOnly(2026, 9, 1));   // future month this year
+        Trap(RenewalTriggers.Anchor(3, null, today) == new DateOnly(2027, 3, 1));   // passed -> next year
+        Trap(RenewalTriggers.Anchor(7, null, today) == new DateOnly(2027, 7, 1));   // current month, 1st passed
+        // Anchor with a day -> day-accurate:
+        Trap(RenewalTriggers.Anchor(9, 20, today) == new DateOnly(2026, 9, 20));    // month+day this year
+        Trap(RenewalTriggers.Anchor(7, 2, today) == new DateOnly(2027, 7, 2));      // day already passed -> next year
+        Trap(RenewalTriggers.Anchor(7, 4, today) == new DateOnly(2026, 7, 4));      // day == today -> today (not passed)
+        // Feb 29 renewal clamps to Feb 28 in a non-leap anchor year (2027):
+        Trap(RenewalTriggers.Anchor(2, 29, today) == new DateOnly(2027, 2, 28));
+
+        // Alert copy names the date when a day is known, stays vague when it isn't.
+        Trap(Templates.RenewalAlert("insurance", 60, 9, 20).Body.Contains("on September 20"));
+        Trap(Templates.RenewalAlert("insurance", 60, 9, null).Body.Contains("around September"));
 
         // Offset boundaries: exactly 60/30/7 days out trigger; off-by-one does not.
         var anchor = new DateOnly(2026, 9, 2); // 60 days after 2026-07-04
