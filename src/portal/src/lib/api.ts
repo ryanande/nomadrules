@@ -1,3 +1,5 @@
+import { getAccessToken, msalInstance } from '@/lib/msal'
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5017'
 
 export class ApiError extends Error {
@@ -10,14 +12,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: 'include', // JWT lives in an httpOnly cookie, not readable/settable from here
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  })
+  const headers: HeadersInit = { 'Content-Type': 'application/json', ...init?.headers }
+
+  // Anonymous endpoints (e.g. /api/subscribers register) are called before any
+  // sign-in exists — only attach a token when there's a signed-in account.
+  const hasAccount = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0]
+  if (hasAccount) {
+    const token = await getAccessToken()
+    ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers })
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -57,16 +62,7 @@ export const api = {
   register: (body: { email: string; state: string } & RenewalMonths) =>
     request<Subscriber>('/api/subscribers', { method: 'POST', body: JSON.stringify(body) }),
 
-  requestMagicLink: (email: string) =>
-    request<{ message: string }>('/api/auth/magic-link', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
-
-  verifyMagicLink: (token: string) =>
-    request<{ subscriberId: string }>(`/api/auth/verify?token=${encodeURIComponent(token)}`),
-
-  logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
+  me: () => request<Subscriber>('/api/auth/me'),
 
   getProfile: (id: string) => request<Subscriber>(`/api/subscribers/${id}/profile`),
 

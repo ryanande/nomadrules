@@ -1,8 +1,6 @@
-using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.IdentityModel.Tokens;
 using NomadRules.Api.Features.Auth;
 using NomadRules.Api.Features.LawChanges;
 using NomadRules.Api.Features.Subscribers;
@@ -16,28 +14,19 @@ builder.Services.AddScoped<SubscriberService>();
 builder.Services.AddScoped<LawChangeService>();
 builder.Services.AddScoped<AuthService>();
 
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException("Jwt:Secret not configured");
+// Entra External ID (CIAM) issues and signs subscriber tokens; the API only
+// validates against its OIDC metadata (Authority) — no shared secret to manage
+// or rotate. Portal attaches the token as `Authorization: Bearer` via MSAL.
+var entraAuthority = builder.Configuration["Entra:Authority"]
+    ?? throw new InvalidOperationException("Entra:Authority not configured");
+var entraClientId = builder.Configuration["Entra:ClientId"]
+    ?? throw new InvalidOperationException("Entra:ClientId not configured");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
     {
-        o.TokenValidationParameters = new()
-        {
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ValidateLifetime = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-        };
-        o.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = ctx =>
-            {
-                if (ctx.Request.Cookies.TryGetValue("nr_token", out var cookie))
-                    ctx.Token = cookie;
-                return Task.CompletedTask;
-            }
-        };
+        o.Authority = entraAuthority;
+        o.Audience = entraClientId;
     });
 builder.Services.AddAuthorization();
 
@@ -63,9 +52,11 @@ builder.Services.AddRateLimiter(o =>
 
 builder.Services.AddOpenApi();
 
+// No AllowCredentials(): auth is a Bearer token (MSAL), not a cookie, so the
+// Portal's fetches don't need `credentials: 'include'` and CORS doesn't need it either.
 var portalOrigin = builder.Configuration["PortalOrigin"] ?? "http://localhost:5173";
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins(portalOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+    p.WithOrigins(portalOrigin).AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 

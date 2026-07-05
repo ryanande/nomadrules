@@ -19,6 +19,13 @@ public class SubscriberService(Db db)
             "SELECT * FROM subscribers WHERE email = @email", new { email });
     }
 
+    public async Task<Subscriber?> GetByEntraOidAsync(string entraOid)
+    {
+        using var conn = db.Open();
+        return await conn.QuerySingleOrDefaultAsync<Subscriber>(
+            "SELECT * FROM subscribers WHERE entra_oid = @entraOid", new { entraOid });
+    }
+
     public async Task<Subscriber> CreateAsync(RegisterRequest req)
     {
         var sub = new Subscriber

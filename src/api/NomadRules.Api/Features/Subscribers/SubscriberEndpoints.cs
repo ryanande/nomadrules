@@ -44,7 +44,7 @@ public static class SubscriberEndpoints
         ClaimsPrincipal user,
         SubscriberService svc)
     {
-        if (!IsAuthorized(user, id)) return Results.Forbid();
+        if (!await IsAuthorizedAsync(user, id, svc)) return Results.Forbid();
         var sub = await svc.GetByIdAsync(id);
         return sub is null ? Results.NotFound() : Results.Ok(sub);
     }
@@ -55,7 +55,7 @@ public static class SubscriberEndpoints
         ClaimsPrincipal user,
         SubscriberService svc)
     {
-        if (!IsAuthorized(user, id)) return Results.Forbid();
+        if (!await IsAuthorizedAsync(user, id, svc)) return Results.Forbid();
 
         foreach (var month in new[] { req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
                                        req.LicenseRenewalMonth, req.TaxDueMonth })
@@ -77,7 +77,7 @@ public static class SubscriberEndpoints
         [FromQuery] int limit = 20,
         [FromQuery] int offset = 0)
     {
-        if (!IsAuthorized(user, id)) return Results.Forbid();
+        if (!await IsAuthorizedAsync(user, id, subSvc)) return Results.Forbid();
 
         var sub = await subSvc.GetByIdAsync(id);
         if (sub is null) return Results.NotFound();
@@ -86,7 +86,14 @@ public static class SubscriberEndpoints
         return Results.Ok(new { items, total_count = total, limit, offset });
     }
 
-    // ponytail: simple claim check — no roles yet, add when admin endpoints land
-    private static bool IsAuthorized(ClaimsPrincipal user, string id) =>
-        user.FindFirstValue(ClaimTypes.NameIdentifier) == id;
+    // ponytail: simple claim check — no roles yet, add when admin endpoints land.
+    // The token carries Entra's `oid`, not the internal subscriber id, so this
+    // resolves via entra_oid rather than comparing claims directly to the route id.
+    private static async Task<bool> IsAuthorizedAsync(ClaimsPrincipal user, string id, SubscriberService svc)
+    {
+        var oid = user.FindFirstValue("oid");
+        if (oid is null) return false;
+        var sub = await svc.GetByEntraOidAsync(oid);
+        return sub?.Id == id;
+    }
 }

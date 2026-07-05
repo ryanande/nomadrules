@@ -37,7 +37,7 @@
 5. **Autonomous services** — Services own their database schema; no shared tables across services
 6. **Vertical slices** — API organized by domain concept (SubscriberRegistration, LawChangeFeed, RenewalAlerts), not technical layers
 7. **Observable services** — All services emit logs, metrics, traces; central observability stack (Prometheus, Grafana, Jaeger)
-8. **Pragmatism over dogmatism** — SQLite for v0.1 (not Cosmos), simple queue table (not NServiceBus), magic links (not OAuth)
+8. **Pragmatism over dogmatism** — SQLite for v0.1 (not Cosmos), simple queue table (not NServiceBus). Auth was magic links for v0.1; superseded by Azure Entra External ID (CIAM) for subscribers + Entra ID RBAC for team/admin access, both provisioned via Terraform (see `openspec/changes/azure-entra-auth-iac/`)
 9. **Progressive disclosure** — Documentation unfolds from executive vision (Level 0) to implementation details (Level 4)
 10. **Monorepo, multiple languages** — Single git repo; crawlers in TypeScript, backend in .NET (Flint pattern), portal in React/TypeScript
 11. **Kubernetes-native deployment** — All services run as K8s Deployments/StatefulSets/CronJobs; Helm templates, ArgoCD GitOps

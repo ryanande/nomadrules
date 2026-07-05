@@ -4,6 +4,11 @@ api:
   image:
     repository: ghcr.io/ryanande/nomadrules-api
     tag: latest
+  # Non-secret: Entra External ID (CIAM) tenant identifiers, output by
+  # infra/terraform (see entra.tf). Token validation only, no client secret.
+  entra:
+    authority: ""
+    clientId: ""
 
 migrations:
   image:
