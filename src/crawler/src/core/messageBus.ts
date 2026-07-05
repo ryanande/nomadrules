@@ -1,5 +1,5 @@
 import { ServiceBusClient, ServiceBusSender } from '@azure/service-bus';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, writeFile, rename } from 'fs/promises';
 import { join } from 'path';
 import type { LawChangeDetected } from '../types/messages.js';
 import { logger } from './logger.js';
@@ -40,7 +40,12 @@ export class LocalFilePublisher implements IMessagePublisher {
   async publish(message: LawChangeDetected): Promise<void> {
     await mkdir(this.queueDir, { recursive: true });
     const filename = join(this.queueDir, `${message.messageId}.json`);
-    await writeFile(filename, JSON.stringify(message, null, 2), 'utf-8');
+    // Write to a temp file then rename into place — rename is atomic on the same filesystem, so a consumer
+    // globbing *.json never sees a half-written file (the ingest read/parse race). The .tmp suffix keeps the
+    // in-progress file out of the *.json listing.
+    const tmp = `${filename}.tmp`;
+    await writeFile(tmp, JSON.stringify(message, null, 2), 'utf-8');
+    await rename(tmp, filename);
     logger.info('Message written to local queue', { file: filename, sourceId: message.sourceId });
   }
 

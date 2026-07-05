@@ -1,0 +1,45 @@
+# Ingest consumer: drains the crawler's Service Bus queue into law_changes. Runs continuously (a receiver),
+# so it's a Deployment, not a CronJob. Idempotency lives in the DB (UNIQUE source_message_id + INSERT OR
+# IGNORE), so at-least-once delivery and pod restarts never create duplicate rows.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-ingest
+  namespace: nomadrules-services
+spec:
+  replicas: {{ .Values.ingest.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: nomadrules-ingest
+  template:
+    metadata:
+      labels:
+        app: nomadrules-ingest
+    spec:
+      containers:
+        - name: ingest
+          image: "{{ .Values.ingest.image.repository }}:{{ .Values.ingest.image.tag }}"
+          env:
+            - name: ConnectionStrings__Sqlite
+              valueFrom:
+                secretKeyRef:
+                  name: nomadrules-secrets
+                  key: sqlite-connection-string
+            - name: Ingest__Transport
+              value: "servicebus"
+            - name: Ingest__ServiceBusQueue
+              value: {{ .Values.ingest.serviceBusQueue | quote }}
+            - name: AZURE_SERVICE_BUS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: nomadrules-secrets
+                  key: servicebus-connection-string
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.otlpEndpoint | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nomadrules-data

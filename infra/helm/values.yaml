@@ -23,6 +23,14 @@ emailDelivery:
     repository: ghcr.io/ryanande/nomadrules-email-delivery
     tag: latest
 
+ingest:
+  # Continuous consumer draining the crawler's Service Bus queue into law_changes.
+  replicas: 1
+  serviceBusQueue: "law-changes"
+  image:
+    repository: ghcr.io/ryanande/nomadrules-ingest
+    tag: latest
+
 observability:
   # Pushgateway endpoint for ephemeral batch-job metrics (migration runner).
   pushgatewayUrl: "http://prometheus-pushgateway.nomadrules-data:9091"
