@@ -80,3 +80,11 @@ resource "azurerm_role_assignment" "service_secret_access" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.service[each.value.service].principal_id
 }
+
+# Feeds infra/helm/values.yaml's workloadIdentity.services.<name>.clientId — an
+# operator populates these into a values override file (or `--set`) after apply;
+# they are not secrets, just identifiers, safe to read from `terraform output`.
+output "workload_identity_client_ids" {
+  description = "Map of service name -> Managed Identity client ID, for workloadIdentity.services.<name>.clientId in infra/helm/values.yaml"
+  value       = { for k, v in azurerm_user_assigned_identity.service : k => v.client_id }
+}
