@@ -78,6 +78,10 @@ output "ciam_client_id" {
   value = azuread_application.subscriber_portal.client_id
 }
 
+output "ciam_tenant_id" {
+  value = var.ciam_tenant_id
+}
+
 output "ciam_oidc_discovery_url" {
   value = "https://${var.ciam_tenant_domain}/v2.0/.well-known/openid-configuration"
 }

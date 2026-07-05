@@ -6,6 +6,7 @@
 - [ ] 1.2 Create the Terraform service principal (Application Administrator + Owner on the target resource group)
 - [ ] 1.3 Create the GitHub OIDC federated credential on the Terraform service principal, scoped to this repo + `main`
 - [ ] 1.4 Provision the remote state backend (Azure Storage account + container) by hand, with state locking
+- [ ] 1.5 Create a `terraform-apply` GitHub Environment with required reviewers (Settings > Environments) so auto-apply-on-merge always waits for human approval
 
 ## 2. Terraform foundation (`infra/terraform/`)
 

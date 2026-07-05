@@ -1,5 +1,8 @@
 # Scaffold: apply on merge to main. Auth is OIDC federated credential (see
-# infra/terraform/README.md) — no stored Azure client secret.
+# infra/terraform/README.md) — no stored Azure client secret. The `environment:`
+# below must have required reviewers configured in repo Settings > Environments
+# (this is a one-time manual step — GitHub Environment protection rules aren't
+# expressible in workflow YAML) so every apply gets a human checkpoint after merge.
 name: terraform-apply
 
 on:
@@ -16,6 +19,7 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
+    environment: terraform-apply
     defaults:
       run:
         working-directory: infra/terraform

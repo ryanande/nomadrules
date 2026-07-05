@@ -10,6 +10,7 @@ Before the first `terraform init`/`apply`, someone with Application Administrato
 2. Create the Terraform service principal, grant it Owner on the target resource group and Application Administrator on both the workforce and CIAM tenants.
 3. Add a GitHub OIDC federated credential on that service principal, scoped to `var.github_repo` + the `main` branch, so CI never stores a client secret.
 4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled.
+5. Create a `terraform-apply` GitHub Environment (Settings > Environments) with required reviewers, so `terraform-apply.yml`'s auto-apply-on-merge always waits for a human checkpoint before touching real infrastructure.
 
 Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`, not hardcoded in `backend.tf`.
 

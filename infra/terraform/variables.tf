@@ -49,6 +49,11 @@ variable "team_role_assignments" {
   description = "Map of workforce Entra ID object ID -> app role name (Admin, Operator, or ReadOnly) for each team member"
   type        = map(string)
   # ponytail: no default — real object IDs are supplied via terraform.tfvars (not committed)
+
+  validation {
+    condition     = alltrue([for role in values(var.team_role_assignments) : contains(["Admin", "Operator", "ReadOnly"], role)])
+    error_message = "Each team_role_assignments value must be one of: Admin, Operator, ReadOnly."
+  }
 }
 
 variable "break_glass_object_id" {

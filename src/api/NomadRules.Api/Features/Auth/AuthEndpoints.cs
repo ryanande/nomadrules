@@ -6,7 +6,7 @@ public static class AuthEndpoints
 {
     public static void Map(WebApplication app)
     {
-        var group = app.MapGroup("/api/auth").WithTags("Auth").RequireAuthorization();
+        var group = app.MapGroup("/api/auth").WithTags("Auth").RequireAuthorization("SubscriberTenant");
 
         // First call after an Entra sign-in: JIT-resolves (or provisions) the
         // subscriber for this token so the Portal learns its internal subscriber id.
@@ -22,7 +22,16 @@ public static class AuthEndpoints
         if (oid is null || email is null)
             return Results.BadRequest(new { error = "invalid_token", message = "Token is missing oid/email claims" });
 
-        var sub = await authSvc.ResolveOrProvisionAsync(oid, email);
-        return Results.Ok(sub);
+        var emailVerified = bool.TryParse(user.FindFirstValue("email_verified"), out var v) && v;
+
+        try
+        {
+            var sub = await authSvc.ResolveOrProvisionAsync(oid, email, emailVerified);
+            return Results.Ok(sub);
+        }
+        catch (AccountLinkingConflictException ex)
+        {
+            return Results.Conflict(new { error = "account_linking_conflict", message = ex.Message });
+        }
     }
 }

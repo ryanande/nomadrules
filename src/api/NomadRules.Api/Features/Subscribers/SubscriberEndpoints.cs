@@ -10,9 +10,9 @@ public static class SubscriberEndpoints
         var group = app.MapGroup("/api/subscribers").WithTags("Subscribers");
 
         group.MapPost("/", Register).AllowAnonymous();
-        group.MapGet("/{id}/profile", GetProfile).RequireAuthorization();
-        group.MapPut("/{id}/profile", UpdateProfile).RequireAuthorization();
-        group.MapGet("/{id}/feed", GetFeed).RequireAuthorization();
+        group.MapGet("/{id}/profile", GetProfile).RequireAuthorization("SubscriberTenant");
+        group.MapPut("/{id}/profile", UpdateProfile).RequireAuthorization("SubscriberTenant");
+        group.MapGet("/{id}/feed", GetFeed).RequireAuthorization("SubscriberTenant");
     }
 
     private static async Task<IResult> Register(

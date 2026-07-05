@@ -47,6 +47,8 @@ spec:
               value: {{ .Values.api.entra.authority | quote }}
             - name: Entra__ClientId
               value: {{ .Values.api.entra.clientId | quote }}
+            - name: Entra__TenantId
+              value: {{ .Values.api.entra.tenantId | quote }}
           volumeMounts:
             - name: data
               mountPath: /data

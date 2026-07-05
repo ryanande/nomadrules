@@ -5,13 +5,26 @@ import { msalInstance } from '@/lib/msal'
 import './index.css'
 import App from './App.tsx'
 
-await msalInstance.initialize()
-await msalInstance.handleRedirectPromise()
+const root = createRoot(document.getElementById('root')!)
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <MsalProvider instance={msalInstance}>
-      <App />
-    </MsalProvider>
-  </StrictMode>,
-)
+try {
+  await msalInstance.initialize()
+  await msalInstance.handleRedirectPromise()
+
+  root.render(
+    <StrictMode>
+      <MsalProvider instance={msalInstance}>
+        <App />
+      </MsalProvider>
+    </StrictMode>,
+  )
+} catch (err) {
+  console.error('Failed to initialize sign-in', err)
+  root.render(
+    <StrictMode>
+      <p style={{ margin: '4rem auto', textAlign: 'center', fontSize: '0.875rem' }}>
+        Something went wrong loading the sign-in page. Please refresh and try again.
+      </p>
+    </StrictMode>,
+  )
+}

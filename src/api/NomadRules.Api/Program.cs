@@ -21,6 +21,8 @@ var entraAuthority = builder.Configuration["Entra:Authority"]
     ?? throw new InvalidOperationException("Entra:Authority not configured");
 var entraClientId = builder.Configuration["Entra:ClientId"]
     ?? throw new InvalidOperationException("Entra:ClientId not configured");
+var entraTenantId = builder.Configuration["Entra:TenantId"]
+    ?? throw new InvalidOperationException("Entra:TenantId not configured");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -28,7 +30,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.Authority = entraAuthority;
         o.Audience = entraClientId;
     });
-builder.Services.AddAuthorization();
+
+builder.Services.AddAuthorization(o =>
+{
+    // Defense-in-depth: Authority/Audience already scope accepted tokens to the
+    // CIAM tenant, but this makes the subscriber-vs-workforce split an explicit,
+    // testable check rather than an implicit side effect of that configuration.
+    o.AddPolicy("SubscriberTenant", p => p.RequireClaim("tid", entraTenantId));
+});
 
 builder.Services.AddRateLimiter(o =>
 {

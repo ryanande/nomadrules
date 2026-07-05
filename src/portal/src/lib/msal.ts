@@ -12,9 +12,14 @@ export const msalInstance = new PublicClientApplication({
   },
 })
 
-const loginRequest = { scopes: [import.meta.env.VITE_ENTRA_API_SCOPE] }
-
 export async function getAccessToken(): Promise<string> {
+  const apiScope = import.meta.env.VITE_ENTRA_API_SCOPE
+  // Checked lazily (not at module load) so a missing env var surfaces as a
+  // catchable error within the app's existing error handling (App.tsx/main.tsx)
+  // instead of an uncaught throw during module evaluation.
+  if (!apiScope) throw new Error('VITE_ENTRA_API_SCOPE is not configured — see .env.example')
+  const loginRequest = { scopes: [apiScope] }
+
   const account = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0]
   if (!account) throw new Error('No signed-in account')
 

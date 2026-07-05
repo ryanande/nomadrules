@@ -9,6 +9,7 @@ api:
   entra:
     authority: ""
     clientId: ""
+    tenantId: ""
 
 migrations:
   image:

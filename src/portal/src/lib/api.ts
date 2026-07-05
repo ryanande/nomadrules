@@ -1,4 +1,4 @@
-import { getAccessToken, msalInstance } from '@/lib/msal'
+import { getAccessToken } from '@/lib/msal'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5017'
 
@@ -11,18 +11,22 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: HeadersInit = { 'Content-Type': 'application/json', ...init?.headers }
+async function request<T>(
+  path: string,
+  init?: RequestInit & { anonymous?: boolean },
+): Promise<T> {
+  const { anonymous, ...requestInit } = init ?? {}
+  const headers: HeadersInit = { 'Content-Type': 'application/json', ...requestInit.headers }
 
-  // Anonymous endpoints (e.g. /api/subscribers register) are called before any
-  // sign-in exists — only attach a token when there's a signed-in account.
-  const hasAccount = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0]
-  if (hasAccount) {
+  // Anonymous endpoints (e.g. /api/subscribers register) must never carry a
+  // token, even if a stale/previous account is cached on a shared device —
+  // callers opt in explicitly rather than this being inferred from cache state.
+  if (!anonymous) {
     const token = await getAccessToken()
     ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers })
+  const res = await fetch(`${API_URL}${path}`, { ...requestInit, headers })
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -60,7 +64,11 @@ export interface LawChangeFeedItem {
 
 export const api = {
   register: (body: { email: string; state: string } & RenewalMonths) =>
-    request<Subscriber>('/api/subscribers', { method: 'POST', body: JSON.stringify(body) }),
+    request<Subscriber>('/api/subscribers', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      anonymous: true,
+    }),
 
   me: () => request<Subscriber>('/api/auth/me'),
 

@@ -6,12 +6,12 @@ locals {
   # Each tier's built-in Azure roles + the scope they apply at, per design.md.
   role_grants = {
     Admin = [
-      { azure_role = "Key Vault Secrets Officer", scope = data.azurerm_resource_group.main.id },
+      { azure_role = "Key Vault Secrets Officer", scope = data.azurerm_key_vault.main.id },
       { azure_role = "Azure Kubernetes Service RBAC Admin", scope = data.azurerm_kubernetes_cluster.main.id },
       { azure_role = "AcrPush", scope = data.azurerm_container_registry.main.id },
     ]
     Operator = [
-      { azure_role = "Key Vault Secrets User", scope = data.azurerm_resource_group.main.id },
+      { azure_role = "Key Vault Secrets User", scope = data.azurerm_key_vault.main.id },
       { azure_role = "Azure Kubernetes Service RBAC Reader", scope = data.azurerm_kubernetes_cluster.main.id },
     ]
     ReadOnly = [
@@ -39,4 +39,15 @@ resource "azurerm_role_assignment" "team" {
   principal_id         = each.value.object_id
   role_definition_name = each.value.azure_role
   scope                = each.value.scope
+}
+
+# Enforces the break-glass guarantee documented in README.md: that account's
+# access must stay outside these Terraform-managed role assignments. A `check`
+# block (rather than a variable `validation`, which can only reference itself)
+# so this can compare team_role_assignments against break_glass_object_id.
+check "break_glass_not_in_team_role_assignments" {
+  assert {
+    condition     = !contains(keys(var.team_role_assignments), var.break_glass_object_id)
+    error_message = "break_glass_object_id must not appear in team_role_assignments — its access is intentionally out-of-band (see README.md)."
+  }
 }
