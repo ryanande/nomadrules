@@ -79,7 +79,7 @@ public record SubscriberNotificationQueued(
 | Concern | Choice | Rationale |
 |---------|--------|-----------|
 | Framework | ASP.NET Core 9 (minimal API) | Team expertise; excellent Azure App Service support |
-| Auth | Azure AD B2C or Auth0 | Managed identity; social login for consumer app |
+| Auth | Azure Entra External ID (CIAM) | Decided over Auth0/B2C — managed identity, no shared secret to rotate; see `openspec/changes/azure-entra-auth-iac/` |
 | ORM / data access | `Microsoft.Azure.Cosmos` (direct) | Schema-flexible; matches Cosmos document model |
 | Validation | `FluentValidation` | Clean, expressive validation rules |
 | API docs | Swagger / Scalar | Auto-generated from minimal API route definitions |

@@ -1,0 +1,6 @@
+# Copy to backend.ci.hcl (gitignored) with real values from the manual bootstrap
+# step (see README.md), or pass the same keys as `-backend-config` flags in CI.
+resource_group_name  = "REPLACE_ME"
+storage_account_name = "REPLACE_ME"
+container_name       = "tfstate"
+key                  = "nomadrules.tfstate"

@@ -1,64 +1,69 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
 using Dapper;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Data.Sqlite;
 using NomadRules.Api.Infrastructure;
 
 namespace NomadRules.Api.Features.Auth;
 
-public class AuthService(Db db, IConfiguration config)
+// Thrown when a token's email matches an existing subscriber but linking it
+// would require trusting an unverified email claim (see ResolveOrProvisionAsync).
+public class AccountLinkingConflictException(string message) : Exception(message);
+
+// Entra issues and signs tokens; the API only validates them (see Program.cs's
+// AddJwtBearer against the CIAM tenant's Authority). This service's only job is
+// JIT-linking a validated token's oid claim to a subscribers row.
+public class AuthService(Db db)
 {
-    private readonly string _jwtSecret = config["Jwt:Secret"]
-        ?? throw new InvalidOperationException("Jwt:Secret not configured");
-    private readonly string _portalOrigin = config["PortalOrigin"] ?? "http://localhost:5173";
-
-    public async Task<string> CreateMagicLinkAsync(string subscriberId)
-    {
-        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
-
-        using var conn = db.Open();
-        await conn.ExecuteAsync("""
-            INSERT OR REPLACE INTO magic_links (token, subscriber_id, expires_at, used)
-            VALUES (@token, @subscriberId, datetime('now', '+24 hours'), 0)
-            """, new { token, subscriberId });
-
-        // No /api prefix: this must never collide with a real backend route, since
-        // AppUrl and PortalOrigin are the same domain in prod and a path-based
-        // ingress could route /api/* straight to the backend, bypassing the portal.
-        return $"{_portalOrigin}/verify?token={token}";
-    }
-
-    public async Task<(string Jwt, string SubscriberId)?> VerifyMagicLinkAsync(string token)
+    public async Task<Subscribers.Subscriber> ResolveOrProvisionAsync(string entraOid, string email, bool emailVerified)
     {
         using var conn = db.Open();
-        var link = await conn.QuerySingleOrDefaultAsync("""
-            SELECT subscriber_id, expires_at, used
-            FROM magic_links
-            WHERE token = @token
-            """, new { token });
 
-        if (link is null || link.used == 1) return null;
-#pragma warning disable CS8602
-        if (DateTime.Parse((string)link.expires_at) < DateTime.UtcNow) return null;
-#pragma warning restore CS8602
+        var byOid = await conn.QuerySingleOrDefaultAsync<Subscribers.Subscriber>(
+            "SELECT * FROM subscribers WHERE entra_oid = @entraOid", new { entraOid });
+        if (byOid is not null) return byOid;
 
-        await conn.ExecuteAsync(
-            "UPDATE magic_links SET used = 1 WHERE token = @token", new { token });
+        try
+        {
+            // The free renewal-calendar tool can create a subscribers row (email only,
+            // no entra_oid) before the same person ever signs in — link it here instead
+            // of creating a duplicate. Only auto-link when Entra has verified the email:
+            // otherwise any token bearing a matching (unverified) email claim could take
+            // over an existing subscriber's account.
+            var byEmail = await conn.QuerySingleOrDefaultAsync<Subscribers.Subscriber>(
+                "SELECT * FROM subscribers WHERE email = @email", new { email });
+            if (byEmail is not null)
+            {
+                if (byEmail.EntraOid is not null || !emailVerified)
+                {
+                    throw new AccountLinkingConflictException(
+                        "An account with this email already exists and could not be automatically linked.");
+                }
 
-        string subscriberId = link.subscriber_id;
-        return (IssueJwt(subscriberId), subscriberId);
-    }
+                await conn.ExecuteAsync(
+                    "UPDATE subscribers SET entra_oid = @entraOid, updated_at = datetime('now') WHERE id = @id",
+                    new { entraOid, id = byEmail.Id });
+                byEmail.EntraOid = entraOid;
+                return byEmail;
+            }
 
-    private string IssueJwt(string subscriberId)
-    {
-        var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_jwtSecret));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-            claims: [new Claim(ClaimTypes.NameIdentifier, subscriberId)],
-            expires: DateTime.UtcNow.AddDays(30),
-            signingCredentials: creds);
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            var id = Guid.NewGuid().ToString();
+            await conn.ExecuteAsync("""
+                INSERT INTO subscribers (id, email, state, tier, entra_oid, created_at, updated_at)
+                VALUES (@id, @email, 'TX', 'free', @entraOid, datetime('now'), datetime('now'))
+                """, new { id, email, entraOid });
+
+            return (await conn.QuerySingleAsync<Subscribers.Subscriber>(
+                "SELECT * FROM subscribers WHERE id = @id", new { id }))!;
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT
+        {
+            // Lost a race to a concurrent first-login for the same oid/email — the other
+            // request's insert/update already committed, so re-read and return its result
+            // instead of surfacing the constraint violation as a 500.
+            var winner = await conn.QuerySingleOrDefaultAsync<Subscribers.Subscriber>(
+                "SELECT * FROM subscribers WHERE entra_oid = @entraOid OR email = @email",
+                new { entraOid, email });
+            if (winner is not null) return winner;
+            throw;
+        }
     }
 }

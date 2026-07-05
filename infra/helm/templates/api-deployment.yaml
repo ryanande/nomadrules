@@ -43,6 +43,12 @@ spec:
                 secretKeyRef:
                   name: nomadrules-secrets
                   key: sqlite-connection-string
+            - name: Entra__Authority
+              value: {{ .Values.api.entra.authority | quote }}
+            - name: Entra__ClientId
+              value: {{ .Values.api.entra.clientId | quote }}
+            - name: Entra__TenantId
+              value: {{ .Values.api.entra.tenantId | quote }}
           volumeMounts:
             - name: data
               mountPath: /data

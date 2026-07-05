@@ -28,6 +28,7 @@ public class Subscriber
     public string Tier { get; set; } = "free";
     public string? StripeCustomerId { get; set; }
     public string? StripeSubscriptionId { get; set; }
+    public string? EntraOid { get; set; }
     public string CreatedAt { get; set; } = default!;
     public string UpdatedAt { get; set; } = default!;
 }
