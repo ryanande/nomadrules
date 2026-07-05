@@ -28,6 +28,13 @@ resource "azurerm_postgresql_flexible_server" "main" {
   backup_retention_days = 7
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
+
+  lifecycle {
+    # Same guard as the AKS cluster/Key Vault/ACR in resources.tf — this is the
+    # actual data store; a forced-replacement plan (e.g. a SKU family or delegated-
+    # subnet change) must never destroy it silently.
+    prevent_destroy = true
+  }
 }
 
 resource "azurerm_postgresql_flexible_server_database" "main" {

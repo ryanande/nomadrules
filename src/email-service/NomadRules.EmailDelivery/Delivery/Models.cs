@@ -16,8 +16,9 @@ public class DeliveryOptions
 
 // A subscriber and the renewal month (1-12) + optional day (1-31) for one category. Month is null when unset
 // for that category; day is null when only a month was entered (anchor falls back to the 1st).
-// long? to match SQLite INTEGER (Dapper requires an exact type match).
-public record SubscriberRow(string Id, string Email, string State, long? RenewalMonth, long? RenewalDay);
+// int? to match Postgres INTEGER (Dapper's record/constructor materialization requires an exact type match —
+// unlike class property assignment, which tolerates numeric coercion).
+public record SubscriberRow(string Id, string Email, string State, int? RenewalMonth, int? RenewalDay);
 
 // Just enough to address a subscriber, for state-matched digest/urgent delivery — no renewal fields, so
 // insurance-specific columns can't be misread as a generic renewal value.

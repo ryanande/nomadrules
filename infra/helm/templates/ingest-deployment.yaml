@@ -18,9 +18,17 @@ spec:
         azure.workload.identity/use: "true"
     spec:
       serviceAccountName: ingest
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: ingest
           image: "{{ .Values.ingest.image.repository }}:{{ .Values.ingest.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.ingest.resources | nindent 12 }}
           env:
             - name: ConnectionStrings__Postgres
               valueFrom:

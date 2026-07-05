@@ -19,9 +19,17 @@ spec:
         spec:
           serviceAccountName: crawler
           restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
           containers:
             - name: crawler
               image: "{{ .Values.crawler.image.repository }}:{{ .Values.crawler.image.tag }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                {{- toYaml .Values.crawler.resources | nindent 16 }}
               env:
                 - name: TRANSPORT
                   value: "servicebus"
@@ -41,6 +49,10 @@ spec:
                 - name: secrets-store
                   mountPath: /mnt/secrets-store
                   readOnly: true
+                # Chromium needs more /dev/shm than K8s's tiny default tmpfs (64Mi) —
+                # without this it crashes under real page loads, not just simple ones.
+                - name: dshm
+                  mountPath: /dev/shm
           volumes:
             - name: secrets-store
               csi:
@@ -48,3 +60,7 @@ spec:
                 readOnly: true
                 volumeAttributes:
                   secretProviderClass: {{ .Release.Name }}-crawler-spc
+            - name: dshm
+              emptyDir:
+                medium: Memory
+                sizeLimit: 512Mi

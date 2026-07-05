@@ -20,9 +20,17 @@ spec:
     spec:
       serviceAccountName: db-migrations
       restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: db-migrations
           image: "{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
           env:
             - name: ConnectionStrings__Postgres
               valueFrom:

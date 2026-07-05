@@ -17,9 +17,17 @@ spec:
         azure.workload.identity/use: "true"
     spec:
       serviceAccountName: summarizer
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: summarizer
           image: "{{ .Values.summarizer.image.repository }}:{{ .Values.summarizer.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.summarizer.resources | nindent 12 }}
           env:
             - name: ConnectionStrings__Postgres
               valueFrom:

@@ -53,7 +53,7 @@ This change is the "make it actually run in production, securely" pass: one AKS 
 **Decision: `crawler` and `db-migrations` run as Helm-templated CronJob/Job (not long-running Deployments); `api`, `summarizer`, `email-service`, `ingest`, `portal` as Deployments**
 - Why: `crawler` runs on a schedule (matches its current standalone-process shape); `db-migrations` runs once per deploy as an init-style Job ahead of the `api` rollout (same "runner fails fast, pod never starts against a bad schema" contract `db-migration-runner`'s spec already establishes). The other five are always-on request/queue consumers.
 
-**Decision: Single namespace `nomadrules` for app workloads; keep the existing `nomadrules-data` namespace for observability (Pushgateway/OTel), do not create a namespace per service**
+**Decision: Single namespace `nomadrules-services` for app workloads; keep the existing `nomadrules-data` namespace for observability (Pushgateway/OTel), do not create a namespace per service**
 - Why: One cluster was the explicit ask; six services at this scale don't need per-service namespace isolation yet — RBAC/network boundaries come from Workload Identity + NetworkPolicy, not namespace sprawl. Revisit only if a service needs a materially different resource quota or a hard multi-tenant boundary.
 
 ## Risks / Trade-offs

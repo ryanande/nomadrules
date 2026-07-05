@@ -41,11 +41,19 @@ api:
     authority: ""
     clientId: ""
     tenantId: ""
+  # Sized for a request/response API; bump if p95 latency or OOMKills show it's too tight.
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
 
 migrations:
   image:
     repository: ghcr.io/ryanande/nomadrules-dbmigrations
     tag: latest
+  # Runs briefly per deploy (pre-upgrade hook), not continuously — light footprint.
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
 
 emailDelivery:
   # Daily at 09:00 UTC; the worker only sends the digest on its configured DigestDayOfWeek (Friday).
@@ -53,6 +61,9 @@ emailDelivery:
   image:
     repository: ghcr.io/ryanande/nomadrules-email-delivery
     tag: latest
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
 
 ingest:
   # Continuous consumer draining the crawler's Service Bus queue into law_changes.
@@ -61,6 +72,9 @@ ingest:
   image:
     repository: ghcr.io/ryanande/nomadrules-ingest
     tag: latest
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
 
 crawler:
   # Daily crawl pass (--run-now, one-shot) — matches the crawler's own scheduling model.
@@ -68,12 +82,20 @@ crawler:
   image:
     repository: ghcr.io/ryanande/nomadrules-crawler
     tag: latest
+  # Playwright + a headless Chromium instance needs materially more than the other
+  # workers — this is the one most likely to need retuning against real usage.
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
 
 summarizer:
   replicas: 1
   image:
     repository: ghcr.io/ryanande/nomadrules-summarizer
     tag: latest
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 250m, memory: 256Mi }
 
 portal:
   replicas: 1
@@ -86,6 +108,10 @@ portal:
     authority: ""
     apiScope: ""
   apiUrl: "https://api.nomadrules.com"
+  # Static nginx serving pre-built assets — the lightest workload in the chart.
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 100m, memory: 64Mi }
 
 observability:
   # Pushgateway endpoint for ephemeral batch-job metrics (migration runner).

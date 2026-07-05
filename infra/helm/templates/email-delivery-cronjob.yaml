@@ -17,9 +17,17 @@ spec:
         spec:
           serviceAccountName: email-delivery
           restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
           containers:
             - name: email-delivery
               image: "{{ .Values.emailDelivery.image.repository }}:{{ .Values.emailDelivery.image.tag }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                {{- toYaml .Values.emailDelivery.resources | nindent 16 }}
               args: ["--run-now"]
               env:
                 - name: ConnectionStrings__Postgres

@@ -17,8 +17,9 @@ public class ClaudeOptions
     public int TimeoutSeconds { get; set; } = 30;
 }
 
-// A row claimed for summarization. RetryCount is long to match SQLite INTEGER (Dapper requires an exact type match).
-public record LawChangeRow(string Id, string RawContent, long RetryCount);
+// A row claimed for summarization. RetryCount is int to match Postgres INTEGER (Dapper's record/constructor
+// materialization requires an exact type match — unlike class property assignment, which tolerates numeric coercion).
+public record LawChangeRow(string Id, string RawContent, int RetryCount);
 
 // Parsed Claude output plus usage/cost for one summary.
 public record SummaryResult(
