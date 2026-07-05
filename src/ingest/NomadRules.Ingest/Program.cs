@@ -86,12 +86,13 @@ static class SelfCheck
             "LawChangeDetected", "msg-123", "tx-doi", "<raw>", "hashA", null,
             "http://tdi.tx", null, "insurance", "2026-07-02T00:00:00Z");
 
-        var row = Mapping.ToRow(msg, "TX");
+        var row = Mapping.ToRow(msg with { ContentHash = "hashA", PreviousHash = "hashPrev" }, "TX");
         Trap(row.SourceMessageId == "msg-123");        // dedup key is the producer's messageId
         Trap(row.Id != "msg-123");                     // our id is system-owned, not the messageId
         Trap(Guid.TryParse(row.Id, out _));
         Trap(row.State == "TX");                       // null message state -> MVP default
         Trap(row.SourceId == "tx-doi" && row.RawContent == "<raw>");
+        Trap(row.ContentHash == "hashA" && row.PreviousHash == "hashPrev"); // hashes persisted, not dropped
 
         var withState = Mapping.ToRow(msg with { State = "CA" }, "TX");
         Trap(withState.State == "CA");                 // explicit state wins over default

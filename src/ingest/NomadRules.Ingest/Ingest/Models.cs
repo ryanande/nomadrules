@@ -30,6 +30,8 @@ public record LawChangeDetected(
 public record LawChangeInsert(
     string Id,
     string SourceMessageId,
+    string? ContentHash,
+    string? PreviousHash,
     string SourceId,
     string Url,
     string RawContent,
@@ -61,6 +63,8 @@ public static class Mapping
     public static LawChangeInsert ToRow(LawChangeDetected msg, string defaultState) => new(
         Id: Guid.NewGuid().ToString(),
         SourceMessageId: msg.MessageId,
+        ContentHash: msg.ContentHash,
+        PreviousHash: msg.PreviousHash,
         SourceId: msg.SourceId,
         Url: msg.Url,
         RawContent: msg.RawContent,

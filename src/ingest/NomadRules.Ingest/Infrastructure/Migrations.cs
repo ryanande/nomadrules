@@ -2,32 +2,26 @@ using Dapper;
 
 namespace NomadRules.Ingest.Infrastructure;
 
-// The canonical schema lives in NomadRules.DbMigrations (law_changes in V001, source_message_id + its
-// unique index in V003). This idempotent guard lets the worker run against a dev DB without the separate
-// migration runner. Safe to run every startup.
-// ponytail: duplicated DDL mirrors the summarizer's self-migrating pattern; when DbUp is the only prod
-// path this can drop to a table-exists guard.
+// The canonical schema is owned entirely by NomadRules.DbMigrations (law_changes in V001, the dedup
+// column/index + hash columns in V003). Ingest does NOT mutate the schema — it only VERIFIES the pieces it
+// depends on are present, failing fast otherwise. This is deliberate: an earlier version self-added
+// source_message_id here, which could race the runner's unconditional V003 ALTER and crash whichever ran
+// second with "duplicate column name". A pure existence check has no such race.
 public static class Migrations
 {
     public static void Apply(Db db)
     {
         using var conn = db.Open();
 
-        // Ingest writes law_changes — an API-owned table. Fail with a clear message instead of a cryptic
-        // "no such table" the first time we insert.
-        var exists = conn.ExecuteScalar<long>(
+        var tableExists = conn.ExecuteScalar<long>(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='law_changes'") > 0;
-        if (!exists)
+        if (!tableExists)
             throw new InvalidOperationException(
-                "law_changes table not found. Run db-migrations (or start the API) to create the schema before ingest.");
+                "law_changes table not found. Run db-migrations (V001) before starting ingest.");
 
-        // Dedup key (V003). Ensure the column + unique index exist so idempotent insert works on a bare DB.
         var cols = conn.Query<string>("SELECT name FROM pragma_table_info('law_changes')").AsList();
         if (!cols.Contains("source_message_id"))
-            conn.Execute("ALTER TABLE law_changes ADD COLUMN source_message_id TEXT");
-        conn.Execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS ux_law_changes_source_message_id
-              ON law_changes(source_message_id) WHERE source_message_id IS NOT NULL
-            """);
+            throw new InvalidOperationException(
+                "law_changes.source_message_id missing. Run db-migrations (V003) before starting ingest.");
     }
 }
