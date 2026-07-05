@@ -13,8 +13,6 @@ using NomadRules.DbMigrations;
 const string ServiceName = "db-migration-runner";
 const string PushgatewayJob = "db_migration_runner";
 
-SQLitePCL.Batteries_V2.Init(); // register the native e_sqlite3 provider
-
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 var isDev = env.Equals("Development", StringComparison.OrdinalIgnoreCase);
 var instance = Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName;
@@ -53,11 +51,11 @@ var config = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-var connStr = Environment.GetEnvironmentVariable("SQLITE_CONNECTION_STRING")
-    ?? config.GetConnectionString("Sqlite");
+var connStr = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
+    ?? config.GetConnectionString("Postgres");
 if (string.IsNullOrWhiteSpace(connStr))
 {
-    Log.Fatal("No connection string: set SQLITE_CONNECTION_STRING or ConnectionStrings:Sqlite");
+    Log.Fatal("No connection string: set POSTGRES_CONNECTION_STRING or ConnectionStrings:Postgres");
     await FlushAsync(tracerProvider);
     return 1;
 }
@@ -78,11 +76,11 @@ int exitCode;
 
 using (var runSpan = activitySource.StartActivity("migration.run"))
 {
-    runSpan?.SetTag("db.system", "sqlite");
+    runSpan?.SetTag("db.system", "postgresql");
     try
     {
         var upgrader = DeployChanges.To
-            .SqliteDatabase(connStr)
+            .PostgresqlDatabase(connStr)
             .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
             .LogTo(new SerilogUpgradeLog(activitySource))
             .Build();

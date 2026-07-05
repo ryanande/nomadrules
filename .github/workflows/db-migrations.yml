@@ -1,4 +1,6 @@
-# Scaffold: build + push the DbUp migration runner image, tagged with the commit SHA.
+# Build, scan, and deploy the DbUp migration runner image. Deploying it means updating
+# the image tag the db-migrations-job.yaml Helm pre-upgrade hook uses on the next
+# release — the migration itself runs when any service's deploy job does `helm upgrade`.
 name: db-migrations-image
 
 on:
@@ -29,7 +31,48 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: src/db-migrations/NomadRules.DbMigrations
-          push: true
+          push: false
+          load: true
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+      - name: Push image
+        run: docker push -a ${{ env.IMAGE }}
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: deploy
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+
+      - uses: azure/setup-helm@v4
+
+      - run: |
+          helm upgrade --install nomadrules infra/helm \
+            --namespace nomadrules-services --create-namespace \
+            --reuse-values \
+            --set migrations.image.tag=${{ github.sha }}

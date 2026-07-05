@@ -14,12 +14,13 @@ public static class Migrations
         using var conn = db.Open();
 
         var tableExists = conn.ExecuteScalar<long>(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='law_changes'") > 0;
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'law_changes'") > 0;
         if (!tableExists)
             throw new InvalidOperationException(
                 "law_changes table not found. Run db-migrations (V001) before starting ingest.");
 
-        var cols = conn.Query<string>("SELECT name FROM pragma_table_info('law_changes')").AsList();
+        var cols = conn.Query<string>(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'law_changes'").AsList();
         if (!cols.Contains("source_message_id"))
             throw new InvalidOperationException(
                 "law_changes.source_message_id missing. Run db-migrations (V003) before starting ingest.");

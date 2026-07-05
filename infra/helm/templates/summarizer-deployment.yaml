@@ -1,0 +1,44 @@
+# Continuous worker: polls law_changes for unprocessed rows and summarizes via Claude.
+# A Deployment, not a CronJob — matches ingest's "continuous consumer" shape.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-summarizer
+  namespace: nomadrules-services
+spec:
+  replicas: {{ .Values.summarizer.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: nomadrules-summarizer
+  template:
+    metadata:
+      labels:
+        app: nomadrules-summarizer
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: summarizer
+      containers:
+        - name: summarizer
+          image: "{{ .Values.summarizer.image.repository }}:{{ .Values.summarizer.image.tag }}"
+          env:
+            - name: ConnectionStrings__Postgres
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-summarizer-secrets
+                  key: postgres-connection-string
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-summarizer-secrets
+                  key: claude-api-key
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .Release.Name }}-summarizer-spc

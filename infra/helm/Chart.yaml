@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nomadrules
+description: NomadRules platform — all services deployed to one AKS cluster
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

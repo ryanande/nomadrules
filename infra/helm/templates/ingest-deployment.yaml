@@ -1,6 +1,6 @@
 # Ingest consumer: drains the crawler's Service Bus queue into law_changes. Runs continuously (a receiver),
-# so it's a Deployment, not a CronJob. Idempotency lives in the DB (UNIQUE source_message_id + INSERT OR
-# IGNORE), so at-least-once delivery and pod restarts never create duplicate rows.
+# so it's a Deployment, not a CronJob. Idempotency lives in the DB (UNIQUE source_message_id + ON CONFLICT
+# DO NOTHING), so at-least-once delivery and pod restarts never create duplicate rows.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,16 +15,18 @@ spec:
     metadata:
       labels:
         app: nomadrules-ingest
+        azure.workload.identity/use: "true"
     spec:
+      serviceAccountName: ingest
       containers:
         - name: ingest
           image: "{{ .Values.ingest.image.repository }}:{{ .Values.ingest.image.tag }}"
           env:
-            - name: ConnectionStrings__Sqlite
+            - name: ConnectionStrings__Postgres
               valueFrom:
                 secretKeyRef:
-                  name: nomadrules-secrets
-                  key: sqlite-connection-string
+                  name: {{ .Release.Name }}-ingest-secrets
+                  key: postgres-connection-string
             - name: Ingest__Transport
               value: "servicebus"
             - name: Ingest__ServiceBusQueue
@@ -32,14 +34,18 @@ spec:
             - name: AZURE_SERVICE_BUS_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
-                  name: nomadrules-secrets
+                  name: {{ .Release.Name }}-ingest-secrets
                   key: servicebus-connection-string
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.observability.otlpEndpoint | quote }}
           volumeMounts:
-            - name: data
-              mountPath: /data
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
       volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: nomadrules-data
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .Release.Name }}-ingest-spc

@@ -1,5 +1,5 @@
 using Dapper;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using NomadRules.Api.Infrastructure;
 
 namespace NomadRules.Api.Features.Auth;
@@ -39,7 +39,7 @@ public class AuthService(Db db)
                 }
 
                 await conn.ExecuteAsync(
-                    "UPDATE subscribers SET entra_oid = @entraOid, updated_at = datetime('now') WHERE id = @id",
+                    "UPDATE subscribers SET entra_oid = @entraOid, updated_at = now()::text WHERE id = @id",
                     new { entraOid, id = byEmail.Id });
                 byEmail.EntraOid = entraOid;
                 return byEmail;
@@ -48,13 +48,13 @@ public class AuthService(Db db)
             var id = Guid.NewGuid().ToString();
             await conn.ExecuteAsync("""
                 INSERT INTO subscribers (id, email, state, tier, entra_oid, created_at, updated_at)
-                VALUES (@id, @email, 'TX', 'free', @entraOid, datetime('now'), datetime('now'))
+                VALUES (@id, @email, 'TX', 'free', @entraOid, now()::text, now()::text)
                 """, new { id, email, entraOid });
 
             return (await conn.QuerySingleAsync<Subscribers.Subscriber>(
                 "SELECT * FROM subscribers WHERE id = @id", new { id }))!;
         }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
         {
             // Lost a race to a concurrent first-login for the same oid/email — the other
             // request's insert/update already committed, so re-read and return its result
