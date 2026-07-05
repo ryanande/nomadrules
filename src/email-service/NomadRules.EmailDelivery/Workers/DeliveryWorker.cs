@@ -65,13 +65,14 @@ public class DeliveryWorker(
 
     private async Task SendRenewalAlertsAsync(DateOnly today, CancellationToken ct)
     {
-        foreach (var (category, column) in Categories.All)
+        foreach (var (category, monthColumn, dayColumn) in Categories.All)
         {
-            var subs = await repo.SubscribersWithRenewalAsync(column);
+            var subs = await repo.SubscribersWithRenewalAsync(monthColumn, dayColumn);
             foreach (var sub in subs)
             {
                 var month = (int)sub.RenewalMonth!.Value;
-                var anchor = RenewalTriggers.Anchor(month, today);
+                var day = (int?)sub.RenewalDay;
+                var anchor = RenewalTriggers.Anchor(month, day, today);
                 var offset = RenewalTriggers.DueOffset(anchor, today);
                 if (offset is null) continue;
 
@@ -81,7 +82,7 @@ public class DeliveryWorker(
                 if (!await repo.TryReserveRenewalAlertAsync(id, sub.Id, category, offset.Value, anchor.Year))
                     continue;
 
-                var (subject, body) = Templates.RenewalAlert(category, offset.Value, month);
+                var (subject, body) = Templates.RenewalAlert(category, offset.Value, month, day);
                 var ok = await resend.SendAsync(sub.Email, subject, body, $"renewal:{id}", ct);
                 DeliveryMetrics.Sent("renewal", ok);
                 if (ok)

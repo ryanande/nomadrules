@@ -37,16 +37,24 @@ public class SubscriberService(Db db)
             RegistrationRenewalMonth = req.RegistrationRenewalMonth,
             LicenseRenewalMonth = req.LicenseRenewalMonth,
             TaxDueMonth = req.TaxDueMonth,
+            InsuranceRenewalDay = req.InsuranceRenewalDay,
+            RegistrationRenewalDay = req.RegistrationRenewalDay,
+            LicenseRenewalDay = req.LicenseRenewalDay,
+            TaxDueDay = req.TaxDueDay,
         };
 
         using var conn = db.Open();
         await conn.ExecuteAsync("""
             INSERT INTO subscribers
               (id, email, state, insurance_renewal_month, registration_renewal_month,
-               license_renewal_month, tax_due_month, tier, created_at, updated_at)
+               license_renewal_month, tax_due_month,
+               insurance_renewal_day, registration_renewal_day, license_renewal_day, tax_due_day,
+               tier, created_at, updated_at)
             VALUES
               (@Id, @Email, @State, @InsuranceRenewalMonth, @RegistrationRenewalMonth,
-               @LicenseRenewalMonth, @TaxDueMonth, 'free', datetime('now'), datetime('now'))
+               @LicenseRenewalMonth, @TaxDueMonth,
+               @InsuranceRenewalDay, @RegistrationRenewalDay, @LicenseRenewalDay, @TaxDueDay,
+               'free', datetime('now'), datetime('now'))
             """, sub);
         // Re-read so the response carries DB-set timestamps (created_at/updated_at).
         return (await GetByIdAsync(sub.Id))!;
@@ -61,10 +69,16 @@ public class SubscriberService(Db db)
               registration_renewal_month  = COALESCE(@RegistrationRenewalMonth, registration_renewal_month),
               license_renewal_month       = COALESCE(@LicenseRenewalMonth, license_renewal_month),
               tax_due_month               = COALESCE(@TaxDueMonth, tax_due_month),
+              insurance_renewal_day       = COALESCE(@InsuranceRenewalDay, insurance_renewal_day),
+              registration_renewal_day    = COALESCE(@RegistrationRenewalDay, registration_renewal_day),
+              license_renewal_day         = COALESCE(@LicenseRenewalDay, license_renewal_day),
+              tax_due_day                 = COALESCE(@TaxDueDay, tax_due_day),
               updated_at                  = datetime('now')
             WHERE id = @Id
             """, new { Id = id, req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
-                       req.LicenseRenewalMonth, req.TaxDueMonth });
+                       req.LicenseRenewalMonth, req.TaxDueMonth,
+                       req.InsuranceRenewalDay, req.RegistrationRenewalDay,
+                       req.LicenseRenewalDay, req.TaxDueDay });
 
         return (await GetByIdAsync(id))!;
     }

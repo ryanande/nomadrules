@@ -3,20 +3,22 @@ using System.Text;
 namespace NomadRules.EmailDelivery.Delivery;
 
 // Plain-text templates for v0.1 — Jenn owns copy/design polish later (design Non-Goals).
-// Month-anchored dates say "around <Month>", never a false exact date (design Decision 1 trade-off).
+// With a known day the alert names the date; with month only it says "around <Month>", never a false exact
+// date (email-delivery design Decision 1 trade-off).
 public static class Templates
 {
     private static readonly string[] MonthNames =
         ["", "January", "February", "March", "April", "May", "June",
          "July", "August", "September", "October", "November", "December"];
 
-    public static (string Subject, string Body) RenewalAlert(string category, int offset, int renewalMonth)
+    public static (string Subject, string Body) RenewalAlert(string category, int offset, int renewalMonth, int? renewalDay = null)
     {
-        var month = MonthNames[renewalMonth];
+        // "March 20" when a day is known; "around March" when only the month is.
+        var when = renewalDay is int d ? $"on {MonthNames[renewalMonth]} {d}" : $"around {MonthNames[renewalMonth]}";
         var subject = $"Your {category} renewal is about {offset} days away";
         var body =
             $"""
-            Heads up — your {category} renewal is coming up around {month}.
+            Heads up — your {category} renewal is coming up {when}.
 
             You're getting this alert {offset} days ahead so you have time to review any
             recent law changes in your state before you renew.
