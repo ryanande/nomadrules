@@ -19,6 +19,10 @@ public class DeliveryOptions
 // long? to match SQLite INTEGER (Dapper requires an exact type match).
 public record SubscriberRow(string Id, string Email, string State, long? RenewalMonth, long? RenewalDay);
 
+// Just enough to address a subscriber, for state-matched digest/urgent delivery — no renewal fields, so
+// insurance-specific columns can't be misread as a generic renewal value.
+public record SubscriberContact(string Id, string Email, string State);
+
 // A processed, review-passed law change eligible for delivery.
 public record LawChangeRow(string Id, string Headline, string Summary, string Severity, string State);
 

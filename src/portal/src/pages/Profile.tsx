@@ -4,10 +4,14 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { api, type RenewalDates, type Subscriber } from '@/lib/api'
 
-// Renewals recur annually, so only month+day matter — the year in the picker is ignored. We show the current
-// year purely to give the native date input a valid value.
-const REF_YEAR = new Date().getFullYear()
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 
+// Our data is month + OPTIONAL day, not a full date — so we use a month select plus an optional day number
+// rather than <input type="date">. That keeps "month only" a real, editable state (a native date picker
+// can't represent a partial date, and would force a day the moment the field is touched).
 type Field = { monthKey: keyof RenewalDates; dayKey: keyof RenewalDates; label: string }
 const RENEWAL_FIELDS: Field[] = [
   { monthKey: 'insuranceRenewalMonth', dayKey: 'insuranceRenewalDay', label: 'Insurance renewal' },
@@ -16,20 +20,8 @@ const RENEWAL_FIELDS: Field[] = [
   { monthKey: 'taxDueMonth', dayKey: 'taxDueDay', label: 'Tax due' },
 ]
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
-// month+day -> yyyy-MM-dd for the input (day defaults to the 1st for month-only entries); '' when no month.
-function toInputValue(month: number | null, day: number | null): string {
-  if (!month) return ''
-  return `${REF_YEAR}-${pad(month)}-${pad(day ?? 1)}`
-}
-
-// yyyy-MM-dd -> {month, day}; empty -> both null.
-function fromInputValue(value: string): { month: number | null; day: number | null } {
-  if (!value) return { month: null, day: null }
-  const [, m, d] = value.split('-')
-  return { month: Number(m), day: Number(d) }
-}
+const inputClass =
+  'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs disabled:opacity-50'
 
 export function Profile({ subscriberId }: { subscriberId: string }) {
   const [subscriber, setSubscriber] = useState<Subscriber | null>(null)
@@ -71,23 +63,46 @@ export function Profile({ subscriberId }: { subscriberId: string }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Only the month and day matter — the year is ignored.
+            Pick the renewal month. Add the day if you know it — you'll get alerts closer to the exact date.
           </p>
-          {RENEWAL_FIELDS.map(({ monthKey, dayKey, label }) => (
-            <div key={monthKey} className="space-y-2">
-              <Label htmlFor={monthKey}>{label}</Label>
-              <input
-                id={monthKey}
-                type="date"
-                value={toInputValue(dates[monthKey], dates[dayKey])}
-                onChange={(e) => {
-                  const { month, day } = fromInputValue(e.target.value)
-                  setDates({ ...dates, [monthKey]: month, [dayKey]: day })
-                }}
-                className="border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs"
-              />
-            </div>
-          ))}
+          {RENEWAL_FIELDS.map(({ monthKey, dayKey, label }) => {
+            const month = dates[monthKey]
+            return (
+              <div key={monthKey} className="space-y-2">
+                <Label htmlFor={monthKey}>{label}</Label>
+                <div className="flex gap-2">
+                  <select
+                    id={monthKey}
+                    value={month ?? ''}
+                    onChange={(e) => {
+                      const m = e.target.value ? Number(e.target.value) : null
+                      // Clearing the month also clears the day — a day without a month is meaningless.
+                      setDates({ ...dates, [monthKey]: m, [dayKey]: m ? dates[dayKey] : null })
+                    }}
+                    className={inputClass}
+                  >
+                    <option value="">Not set</option>
+                    {MONTHS.map((m, i) => (
+                      <option key={m} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    aria-label={`${label} day`}
+                    min={1}
+                    max={31}
+                    placeholder="Day"
+                    disabled={!month}
+                    value={dates[dayKey] ?? ''}
+                    onChange={(e) =>
+                      setDates({ ...dates, [dayKey]: e.target.value ? Number(e.target.value) : null })
+                    }
+                    className={`${inputClass} w-24`}
+                  />
+                </div>
+              </div>
+            )
+          })}
           <Button onClick={handleSave} className="w-full">
             Save
           </Button>

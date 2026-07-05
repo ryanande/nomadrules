@@ -60,19 +60,23 @@ public class SubscriberService(Db db)
         return (await GetByIdAsync(sub.Id))!;
     }
 
+    // Full replace of the renewal fields (PUT semantics): the request carries the subscriber's complete
+    // desired renewal state, so each column is set directly rather than COALESCE-merged. This is what lets
+    // the profile form clear a date (send NULL -> stored NULL) and means the validated request IS the row
+    // that gets stored — no month/day pair can be assembled from a partial merge that was never validated.
     public async Task<Subscriber> UpdateAsync(string id, UpdateProfileRequest req)
     {
         using var conn = db.Open();
         await conn.ExecuteAsync("""
             UPDATE subscribers SET
-              insurance_renewal_month     = COALESCE(@InsuranceRenewalMonth, insurance_renewal_month),
-              registration_renewal_month  = COALESCE(@RegistrationRenewalMonth, registration_renewal_month),
-              license_renewal_month       = COALESCE(@LicenseRenewalMonth, license_renewal_month),
-              tax_due_month               = COALESCE(@TaxDueMonth, tax_due_month),
-              insurance_renewal_day       = COALESCE(@InsuranceRenewalDay, insurance_renewal_day),
-              registration_renewal_day    = COALESCE(@RegistrationRenewalDay, registration_renewal_day),
-              license_renewal_day         = COALESCE(@LicenseRenewalDay, license_renewal_day),
-              tax_due_day                 = COALESCE(@TaxDueDay, tax_due_day),
+              insurance_renewal_month     = @InsuranceRenewalMonth,
+              registration_renewal_month  = @RegistrationRenewalMonth,
+              license_renewal_month       = @LicenseRenewalMonth,
+              tax_due_month               = @TaxDueMonth,
+              insurance_renewal_day       = @InsuranceRenewalDay,
+              registration_renewal_day    = @RegistrationRenewalDay,
+              license_renewal_day         = @LicenseRenewalDay,
+              tax_due_day                 = @TaxDueDay,
               updated_at                  = datetime('now')
             WHERE id = @Id
             """, new { Id = id, req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,

@@ -31,13 +31,13 @@ public class DeliveryRepository(Db db)
         return rows.AsList();
     }
 
-    // All subscribers, for state-matched digest/urgent delivery. RenewalMonth/Day are unused here — we project
-    // real nullable INTEGER columns (not untyped NULLs, which Dapper can't map to long?).
-    public async Task<IReadOnlyList<SubscriberRow>> AllSubscribersAsync()
+    // All subscribers, for state-matched digest/urgent delivery. Returns only contact fields — no renewal
+    // columns, so nothing here can be misread as a subscriber's renewal month/day.
+    public async Task<IReadOnlyList<SubscriberContact>> AllSubscribersAsync()
     {
         using var conn = db.Open();
-        var rows = await conn.QueryAsync<SubscriberRow>(
-            "SELECT id AS Id, email AS Email, state AS State, insurance_renewal_month AS RenewalMonth, insurance_renewal_day AS RenewalDay FROM subscribers");
+        var rows = await conn.QueryAsync<SubscriberContact>(
+            "SELECT id AS Id, email AS Email, state AS State FROM subscribers");
         return rows.AsList();
     }
 

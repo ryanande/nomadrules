@@ -73,6 +73,13 @@ public class DeliveryWorker(
                 var month = (int)sub.RenewalMonth!.Value;
                 var day = (int?)sub.RenewalDay;
                 var anchor = RenewalTriggers.Anchor(month, day, today);
+
+                // The anchor clamps an out-of-range day to the month's length. Feb 29 in a non-leap year is the
+                // one expected case; anything else means a bad row reached us (validation should prevent it) —
+                // surface it rather than silently shifting the subscriber's alert date. See review finding 6.
+                if (day is int requested && anchor.Day != requested && !(month == 2 && requested == 29))
+                    log.LogWarning("Renewal day {Requested} out of range for {Sub} {Category} month {Month}; clamped to {Clamped}",
+                        requested, sub.Id, category, month, anchor.Day);
                 var offset = RenewalTriggers.DueOffset(anchor, today);
                 if (offset is null) continue;
 
