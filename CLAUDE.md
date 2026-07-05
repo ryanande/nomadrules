@@ -37,7 +37,7 @@
 5. **Autonomous services** — Services own their database schema; no shared tables across services
 6. **Vertical slices** — API organized by domain concept (SubscriberRegistration, LawChangeFeed, RenewalAlerts), not technical layers
 7. **Observable services** — All services emit logs, metrics, traces; central observability stack (Prometheus, Grafana, Jaeger)
-8. **Pragmatism over dogmatism** — SQLite for v0.1 (not Cosmos), simple queue table (not NServiceBus). Auth was magic links for v0.1; superseded by Azure Entra External ID (CIAM) for subscribers + Entra ID RBAC for team/admin access, both provisioned via Terraform (see `openspec/changes/azure-entra-auth-iac/`)
+8. **Pragmatism over dogmatism** — SQLite for v0.1 (not Cosmos), simple queue table (not NServiceBus); superseded by Azure Database for PostgreSQL Flexible Server once every service moved into AKS (see `openspec/changes/aks-secure-platform-deployment/`). Auth was magic links for v0.1; superseded by Azure Entra External ID (CIAM) for subscribers + Entra ID RBAC for team/admin access, both provisioned via Terraform (see `openspec/changes/azure-entra-auth-iac/`)
 9. **Progressive disclosure** — Documentation unfolds from executive vision (Level 0) to implementation details (Level 4)
 10. **Monorepo, multiple languages** — Single git repo; crawlers in TypeScript, backend in .NET (Flint pattern), portal in React/TypeScript
 11. **Kubernetes-native deployment** — All services run as K8s Deployments/StatefulSets/CronJobs; Helm templates, ArgoCD GitOps
@@ -104,8 +104,8 @@ Crawler → AsyncBus
 | **Email Service** | C# async handler, Resend API | Event-driven delivery; Resend for simplicity and relay support |
 | **Portal** | React, TypeScript, shadcn/ui, Vite | Modern, accessible, responsive; shadcn/ui for pre-built components |
 | **Messaging** | AsyncBus (RabbitMQ, AMQP.NET Lite) | Choreography-friendly; RabbitMQ for HA; built-in DLQ/retry handling |
-| **Database** | PostgreSQL v0.1 (SQLite initially, but K8s benefits from persistent volume) | ACID guarantees; JSON support for flexible schema; Dapper/EF Core for ORM |
-| **Deployment** | Kubernetes, Helm, ArgoCD | Native K8s for production readiness; Helm for templating; ArgoCD for GitOps |
+| **Database** | Azure Database for PostgreSQL Flexible Server, VNet-integrated | ACID guarantees; managed backups/patching; Dapper for data access |
+| **Deployment** | Kubernetes (AKS), Helm, CI-driven `helm upgrade` | Native K8s for production readiness; Helm for templating; ArgoCD/GitOps deferred until a second environment justifies it (see `openspec/changes/aks-secure-platform-deployment/design.md`) |
 | **Observability** | Prometheus + Grafana, Jaeger, ELK/Seq | Standard K8s monitoring; Jaeger for distributed tracing |
 
 ---

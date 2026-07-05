@@ -1,6 +1,7 @@
-# Scaffold: API Deployment with the DbUp migration runner as an init container.
-# The init container runs to completion (exit 0) before the API container starts,
-# guaranteeing the schema is applied. See openspec/changes/db-migrations-dbup/design.md.
+# Schema is applied by the db-migrations pre-upgrade Helm hook Job (see
+# db-migrations-job.yaml), which runs to completion before this Deployment rolls
+# out on every `helm upgrade` — not a per-pod-start init container anymore, since
+# migrations only need to run once per release, not once per replica/restart.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,34 +16,33 @@ spec:
     metadata:
       labels:
         app: nomadrules-api
+        azure.workload.identity/use: "true"
     spec:
-      initContainers:
-        - name: db-migrations
-          image: "{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
-          env:
-            - name: SQLITE_CONNECTION_STRING
-              valueFrom:
-                secretKeyRef:
-                  name: nomadrules-secrets
-                  key: sqlite-connection-string
-            - name: PUSHGATEWAY_URL
-              value: {{ .Values.observability.pushgatewayUrl | quote }}
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ .Values.observability.otlpEndpoint | quote }}
-          volumeMounts:
-            - name: data
-              mountPath: /data
+      serviceAccountName: api
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: api
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
           ports:
             - containerPort: 8080
           env:
-            - name: ConnectionStrings__Sqlite
+            - name: ConnectionStrings__Postgres
               valueFrom:
                 secretKeyRef:
-                  name: nomadrules-secrets
-                  key: sqlite-connection-string
+                  name: {{ .Release.Name }}-api-secrets
+                  key: postgres-connection-string
+            - name: Stripe__WebhookSecret
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-api-secrets
+                  key: stripe-webhook-secret
             - name: Entra__Authority
               value: {{ .Values.api.entra.authority | quote }}
             - name: Entra__ClientId
@@ -50,9 +50,13 @@ spec:
             - name: Entra__TenantId
               value: {{ .Values.api.entra.tenantId | quote }}
           volumeMounts:
-            - name: data
-              mountPath: /data
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
       volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: nomadrules-data
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .Release.Name }}-api-spc

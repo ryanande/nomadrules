@@ -1,0 +1,45 @@
+# One ServiceAccount + SecretProviderClass per service (see aks-workload-security spec:
+# per-service Workload Identity, no shared ServiceAccount, no plaintext secrets). The
+# Secrets Store CSI Driver syncs each Key Vault secret into a per-service native
+# Kubernetes Secret ({{ .Release.Name }}-<service>-secrets) so existing secretKeyRef
+# usage in the Deployment/CronJob templates needs no other change.
+{{- range $service, $config := .Values.workloadIdentity.services }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $service }}
+  namespace: nomadrules-services
+  annotations:
+    azure.workload.identity/client-id: {{ $config.clientId | quote }}
+  labels:
+    azure.workload.identity/use: "true"
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: {{ $.Release.Name }}-{{ $service }}-spc
+  namespace: nomadrules-services
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    clientID: {{ $config.clientId | quote }}
+    keyvaultName: {{ $.Values.azure.keyVaultName | quote }}
+    tenantId: {{ $.Values.azure.tenantId | quote }}
+    objects: |
+      array:
+        {{- range $secret := $config.secrets }}
+        - |
+          objectName: {{ $secret }}
+          objectType: secret
+        {{- end }}
+  secretObjects:
+    - secretName: {{ $.Release.Name }}-{{ $service }}-secrets
+      type: Opaque
+      data:
+        {{- range $secret := $config.secrets }}
+        - objectName: {{ $secret }}
+          key: {{ $secret }}
+        {{- end }}
+---
+{{- end }}

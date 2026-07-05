@@ -1,0 +1,66 @@
+# Scheduled crawl pass (--run-now, one-shot): scrapes sources, diffs against the last
+# snapshot, and publishes LawChangeDetected messages to Service Bus for ingest to
+# consume. A CronJob, not a Deployment — matches the design decision that crawler
+# is schedule-driven, not a continuous receiver (contrast with ingest).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-crawler
+  namespace: nomadrules-services
+spec:
+  schedule: {{ .Values.crawler.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: crawler
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+          containers:
+            - name: crawler
+              image: "{{ .Values.crawler.image.repository }}:{{ .Values.crawler.image.tag }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                {{- toYaml .Values.crawler.resources | nindent 16 }}
+              env:
+                - name: TRANSPORT
+                  value: "servicebus"
+                - name: AZURE_SERVICE_BUS_QUEUE
+                  value: {{ .Values.ingest.serviceBusQueue | quote }}
+                - name: AZURE_SERVICE_BUS_CONNECTION_STRING
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-crawler-secrets
+                      key: servicebus-connection-string
+                - name: AZURE_STORAGE_CONNECTION_STRING
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-crawler-secrets
+                      key: storage-connection-string
+              volumeMounts:
+                - name: secrets-store
+                  mountPath: /mnt/secrets-store
+                  readOnly: true
+                # Chromium needs more /dev/shm than K8s's tiny default tmpfs (64Mi) —
+                # without this it crashes under real page loads, not just simple ones.
+                - name: dshm
+                  mountPath: /dev/shm
+          volumes:
+            - name: secrets-store
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: {{ .Release.Name }}-crawler-spc
+            - name: dshm
+              emptyDir:
+                medium: Memory
+                sizeLimit: 512Mi

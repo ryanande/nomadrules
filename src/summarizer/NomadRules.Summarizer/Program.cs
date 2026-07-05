@@ -34,15 +34,6 @@ if (string.IsNullOrWhiteSpace(claude.ApiKey) &&
     string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")))
     Fatal("no Claude API key configured (set Claude:ApiKey or the ANTHROPIC_API_KEY env var)");
 
-try
-{
-    Migrations.Apply(host.Services.GetRequiredService<Db>());
-}
-catch (Exception ex)
-{
-    Fatal(ex.Message);
-}
-
 host.Run();
 
 static void Fatal(string message)

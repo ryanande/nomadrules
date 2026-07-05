@@ -1,4 +1,35 @@
 # Scaffold values for the NomadRules Helm chart.
+
+# Key Vault reached via each service's own Workload Identity (see workload-identity.yaml)
+# — never a plaintext secret in this file.
+azure:
+  keyVaultName: ""
+  tenantId: "" # workforce Entra tenant the Key Vault RBAC is scoped to
+
+# One Managed Identity + SecretProviderClass per service (see infra/terraform/workload-identity.tf
+# for the matching Terraform side — keep the two `secrets` lists in sync by hand). `clientId` is a
+# Terraform output, populated via --set or a per-env values file, never committed as a real value.
+workloadIdentity:
+  services:
+    api:
+      clientId: ""
+      secrets: [postgres-connection-string, stripe-webhook-secret]
+    ingest:
+      clientId: ""
+      secrets: [postgres-connection-string, servicebus-connection-string]
+    summarizer:
+      clientId: ""
+      secrets: [postgres-connection-string, claude-api-key]
+    email-delivery:
+      clientId: ""
+      secrets: [postgres-connection-string, resend-api-key]
+    db-migrations:
+      clientId: ""
+      secrets: [postgres-connection-string]
+    crawler:
+      clientId: ""
+      secrets: [servicebus-connection-string, storage-connection-string]
+
 api:
   replicas: 1
   image:
@@ -10,11 +41,19 @@ api:
     authority: ""
     clientId: ""
     tenantId: ""
+  # Sized for a request/response API; bump if p95 latency or OOMKills show it's too tight.
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
 
 migrations:
   image:
     repository: ghcr.io/ryanande/nomadrules-dbmigrations
     tag: latest
+  # Runs briefly per deploy (pre-upgrade hook), not continuously — light footprint.
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
 
 emailDelivery:
   # Daily at 09:00 UTC; the worker only sends the digest on its configured DigestDayOfWeek (Friday).
@@ -22,6 +61,9 @@ emailDelivery:
   image:
     repository: ghcr.io/ryanande/nomadrules-email-delivery
     tag: latest
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
 
 ingest:
   # Continuous consumer draining the crawler's Service Bus queue into law_changes.
@@ -30,6 +72,46 @@ ingest:
   image:
     repository: ghcr.io/ryanande/nomadrules-ingest
     tag: latest
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
+
+crawler:
+  # Daily crawl pass (--run-now, one-shot) — matches the crawler's own scheduling model.
+  schedule: "0 6 * * *"
+  image:
+    repository: ghcr.io/ryanande/nomadrules-crawler
+    tag: latest
+  # Playwright + a headless Chromium instance needs materially more than the other
+  # workers — this is the one most likely to need retuning against real usage.
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+summarizer:
+  replicas: 1
+  image:
+    repository: ghcr.io/ryanande/nomadrules-summarizer
+    tag: latest
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 250m, memory: 256Mi }
+
+portal:
+  replicas: 1
+  image:
+    repository: ghcr.io/ryanande/nomadrules-portal
+    tag: latest
+  # Non-secret: same CIAM tenant the API validates tokens against.
+  entra:
+    clientId: ""
+    authority: ""
+    apiScope: ""
+  apiUrl: "https://api.nomadrules.com"
+  # Static nginx serving pre-built assets — the lightest workload in the chart.
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 100m, memory: 64Mi }
 
 observability:
   # Pushgateway endpoint for ephemeral batch-job metrics (migration runner).

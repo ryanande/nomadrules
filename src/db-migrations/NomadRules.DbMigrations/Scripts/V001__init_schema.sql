@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS subscribers (
   tier TEXT NOT NULL DEFAULT 'free',
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (now()::text),
+  updated_at TEXT NOT NULL DEFAULT (now()::text)
 );
 
 CREATE TABLE IF NOT EXISTS magic_links (

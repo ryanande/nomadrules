@@ -60,3 +60,66 @@ variable "break_glass_object_id" {
   description = "Object ID of the single break-glass account retaining subscription Owner outside these role assignments (see infra/terraform/README.md)"
   type        = string
 }
+
+# --- Network foundation (network.tf) ---
+variable "vnet_address_space" {
+  description = "Address space for the new platform VNet"
+  type        = string
+  default     = "10.20.0.0/16"
+}
+
+variable "aks_subnet_prefix" {
+  description = "Address prefix for the AKS node subnet"
+  type        = string
+  default     = "10.20.0.0/20"
+}
+
+variable "postgres_subnet_prefix" {
+  description = "Address prefix for the Postgres Flexible Server delegated subnet"
+  type        = string
+  default     = "10.20.16.0/24"
+}
+
+variable "privatelink_subnet_prefix" {
+  description = "Address prefix for the Key Vault / ACR private-endpoints subnet"
+  type        = string
+  default     = "10.20.17.0/24"
+}
+
+variable "app_namespace" {
+  description = "Kubernetes namespace the app workloads (and their ServiceAccounts) run in"
+  type        = string
+  default     = "nomadrules-services"
+}
+
+# --- AKS/Key Vault reconciliation (resources.tf) ---
+# No defaults on purpose: these MUST be populated from `az aks show` / `az keyvault
+# show` output before the first `terraform plan` against the imported resources is
+# trustworthy. See README "Reconciling AKS/Key Vault/ACR before the first apply".
+variable "aks_reconcile" {
+  description = "Live AKS/Key Vault attributes an operator must confirm before importing (see README.md) — no defaults, must be supplied via terraform.tfvars"
+  type = object({
+    dns_prefix          = string
+    kubernetes_version  = string
+    sku_tier            = string
+    node_pool_name      = string
+    node_vm_size        = string
+    node_count          = number
+    network_plugin      = string # must be "azure" — see design.md; "kubenet" means the cluster needs recreating, not importing
+    key_vault_tenant_id = string
+    key_vault_sku       = string
+  })
+}
+
+# --- Postgres (postgres.tf) ---
+variable "postgres_sku_name" {
+  description = "Postgres Flexible Server compute tier (Burstable B1ms is the default fit for current data volume — see design.md)"
+  type        = string
+  default     = "B_Standard_B1ms"
+}
+
+variable "postgres_storage_mb" {
+  description = "Postgres Flexible Server storage size in MB"
+  type        = number
+  default     = 32768
+}

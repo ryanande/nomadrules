@@ -49,8 +49,9 @@ public class DeliveryRepository(Db db)
     {
         using var conn = db.Open();
         await conn.ExecuteAsync("""
-            INSERT OR IGNORE INTO renewal_alerts (id, subscriber_id, category, trigger_offset, renewal_year, sent_at)
+            INSERT INTO renewal_alerts (id, subscriber_id, category, trigger_offset, renewal_year, sent_at)
             VALUES (@id, @subscriberId, @category, @offset, @year, NULL)
+            ON CONFLICT (subscriber_id, category, trigger_offset, renewal_year) DO NOTHING
             """, new { id, subscriberId, category, offset, year });
         return await conn.ExecuteScalarAsync<long>(
             "SELECT COUNT(*) FROM renewal_alerts WHERE id = @id AND sent_at IS NULL", new { id }) > 0;
@@ -89,8 +90,9 @@ public class DeliveryRepository(Db db)
     {
         using var conn = db.Open();
         await conn.ExecuteAsync("""
-            INSERT OR IGNORE INTO notifications (id, subscriber_id, law_change_id, delivery_type, sent_at)
+            INSERT INTO notifications (id, subscriber_id, law_change_id, delivery_type, sent_at)
             VALUES (@id, @subscriberId, @lawChangeId, @deliveryType, NULL)
+            ON CONFLICT (subscriber_id, law_change_id) DO NOTHING
             """, new { id, subscriberId, lawChangeId, deliveryType });
         return await conn.ExecuteScalarAsync<long>(
             "SELECT COUNT(*) FROM notifications WHERE id = @id AND sent_at IS NULL", new { id }) > 0;

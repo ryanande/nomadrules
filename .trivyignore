@@ -1,0 +1,3 @@
+# CVEs allow-listed here have no fixed version available upstream — reviewed quarterly,
+# not a blanket bypass (see design.md risk: "Trivy scan gate could block a merge...").
+# Format: one CVE ID per line, optionally with an expiry comment.

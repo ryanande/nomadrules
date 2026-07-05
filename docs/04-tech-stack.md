@@ -2,6 +2,8 @@
 
 All technology decisions are made to align with our existing expertise and Azure-first infrastructure strategy.
 
+> **Note:** This document predates the v0.1 pivots recorded in `CLAUDE.md` (SQLite/Postgres instead of Cosmos DB, a simple AsyncBus queue instead of NServiceBus, AKS instead of Azure Functions/Container Apps) and has not been fully updated to match. Treat `CLAUDE.md`'s "Technology Stack at a Glance" table as the authoritative current state; this file needs a broader refresh beyond the scope of the change that added this note (see `openspec/changes/aks-secure-platform-deployment`).
+
 ---
 
 ## Crawler layer

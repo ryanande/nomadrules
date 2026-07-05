@@ -6,13 +6,13 @@ locals {
   # Each tier's built-in Azure roles + the scope they apply at, per design.md.
   role_grants = {
     Admin = [
-      { azure_role = "Key Vault Secrets Officer", scope = data.azurerm_key_vault.main.id },
-      { azure_role = "Azure Kubernetes Service RBAC Admin", scope = data.azurerm_kubernetes_cluster.main.id },
-      { azure_role = "AcrPush", scope = data.azurerm_container_registry.main.id },
+      { azure_role = "Key Vault Secrets Officer", scope = azurerm_key_vault.main.id },
+      { azure_role = "Azure Kubernetes Service RBAC Admin", scope = azurerm_kubernetes_cluster.main.id },
+      { azure_role = "AcrPush", scope = azurerm_container_registry.main.id },
     ]
     Operator = [
-      { azure_role = "Key Vault Secrets User", scope = data.azurerm_key_vault.main.id },
-      { azure_role = "Azure Kubernetes Service RBAC Reader", scope = data.azurerm_kubernetes_cluster.main.id },
+      { azure_role = "Key Vault Secrets User", scope = azurerm_key_vault.main.id },
+      { azure_role = "Azure Kubernetes Service RBAC Reader", scope = azurerm_kubernetes_cluster.main.id },
     ]
     ReadOnly = [
       { azure_role = "Reader", scope = data.azurerm_resource_group.main.id },

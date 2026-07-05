@@ -12,7 +12,13 @@ export abstract class BaseScraper implements ISourceScraper {
   private browser: Browser | null = null;
 
   protected async getPage(url: string): Promise<{ page: Page; context: BrowserContext }> {
-    if (!this.browser) this.browser = await chromium.launch({ headless: true });
+    // --no-sandbox: Chromium's own sandbox needs Linux capabilities the pod's
+    // securityContext (runAsNonRoot, all capabilities dropped — see
+    // infra/helm/templates/crawler-cronjob.yaml) deliberately doesn't grant.
+    // Container-level isolation (non-root user, dropped caps, no privilege
+    // escalation) is the substitute sandbox boundary here, same trade-off
+    // Playwright's own container/CI docs recommend.
+    if (!this.browser) this.browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
     const context = await this.browser.newContext({
       userAgent: 'NomadRules-Crawler/1.0 (regulatory monitoring; contact info@nomadrules.com)',
     });

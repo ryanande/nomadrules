@@ -11,29 +11,45 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
         spec:
+          serviceAccountName: email-delivery
           restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
           containers:
             - name: email-delivery
               image: "{{ .Values.emailDelivery.image.repository }}:{{ .Values.emailDelivery.image.tag }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                {{- toYaml .Values.emailDelivery.resources | nindent 16 }}
               args: ["--run-now"]
               env:
-                - name: ConnectionStrings__Sqlite
+                - name: ConnectionStrings__Postgres
                   valueFrom:
                     secretKeyRef:
-                      name: nomadrules-secrets
-                      key: sqlite-connection-string
+                      name: {{ .Release.Name }}-email-delivery-secrets
+                      key: postgres-connection-string
                 - name: RESEND_API_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: nomadrules-secrets
+                      name: {{ .Release.Name }}-email-delivery-secrets
                       key: resend-api-key
                 - name: OTEL_EXPORTER_OTLP_ENDPOINT
                   value: {{ .Values.observability.otlpEndpoint | quote }}
               volumeMounts:
-                - name: data
-                  mountPath: /data
+                - name: secrets-store
+                  mountPath: /mnt/secrets-store
+                  readOnly: true
           volumes:
-            - name: data
-              persistentVolumeClaim:
-                claimName: nomadrules-data
+            - name: secrets-store
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: {{ .Release.Name }}-email-delivery-spc

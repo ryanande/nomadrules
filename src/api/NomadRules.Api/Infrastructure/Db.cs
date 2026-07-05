@@ -1,5 +1,5 @@
 using Dapper;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace NomadRules.Api.Infrastructure;
 
@@ -13,12 +13,12 @@ public class Db(IConfiguration config)
         DefaultTypeMap.MatchNamesWithUnderscores = true;
     }
 
-    private readonly string _connStr = config.GetConnectionString("Sqlite")
-        ?? "Data Source=nomadrules.db";
+    private readonly string _connStr = config.GetConnectionString("Postgres")
+        ?? "Host=localhost;Port=5432;Database=nomadrules;Username=nomadrules;Password=nomadrules";
 
-    public SqliteConnection Open()
+    public NpgsqlConnection Open()
     {
-        var conn = new SqliteConnection(_connStr);
+        var conn = new NpgsqlConnection(_connStr);
         conn.Open();
         return conn;
     }

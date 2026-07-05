@@ -4,8 +4,6 @@ using NomadRules.Ingest.Workers;
 using Serilog;
 using Serilog.Enrichers.Span;
 
-SQLitePCL.Batteries_V2.Init(); // register the native e_sqlite3 provider
-
 if (args.Contains("--selfcheck"))
 {
     SelfCheck.Run();

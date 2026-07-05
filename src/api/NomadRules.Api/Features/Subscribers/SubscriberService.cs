@@ -54,7 +54,7 @@ public class SubscriberService(Db db)
               (@Id, @Email, @State, @InsuranceRenewalMonth, @RegistrationRenewalMonth,
                @LicenseRenewalMonth, @TaxDueMonth,
                @InsuranceRenewalDay, @RegistrationRenewalDay, @LicenseRenewalDay, @TaxDueDay,
-               'free', datetime('now'), datetime('now'))
+               'free', now()::text, now()::text)
             """, sub);
         // Re-read so the response carries DB-set timestamps (created_at/updated_at).
         return (await GetByIdAsync(sub.Id))!;
@@ -77,7 +77,7 @@ public class SubscriberService(Db db)
               registration_renewal_day    = @RegistrationRenewalDay,
               license_renewal_day         = @LicenseRenewalDay,
               tax_due_day                 = @TaxDueDay,
-              updated_at                  = datetime('now')
+              updated_at                  = now()::text
             WHERE id = @Id
             """, new { Id = id, req.InsuranceRenewalMonth, req.RegistrationRenewalMonth,
                        req.LicenseRenewalMonth, req.TaxDueMonth,
@@ -95,7 +95,7 @@ public class SubscriberService(Db db)
               stripe_customer_id     = @customerId,
               stripe_subscription_id = @subscriptionId,
               tier                   = @tier,
-              updated_at             = datetime('now')
+              updated_at             = now()::text
             WHERE email = @email
             """, new { email, customerId, subscriptionId, tier });
     }
@@ -104,7 +104,7 @@ public class SubscriberService(Db db)
     {
         using var conn = db.Open();
         await conn.ExecuteAsync("""
-            UPDATE subscribers SET tier = @tier, updated_at = datetime('now')
+            UPDATE subscribers SET tier = @tier, updated_at = now()::text
             WHERE stripe_subscription_id = @subscriptionId
             """, new { subscriptionId, tier });
     }

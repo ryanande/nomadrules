@@ -4,8 +4,6 @@ using NomadRules.EmailDelivery.Workers;
 using Serilog;
 using Serilog.Enrichers.Span;
 
-SQLitePCL.Batteries_V2.Init(); // register the native e_sqlite3 provider
-
 if (args.Contains("--selfcheck"))
 {
     SelfCheck.Run();
@@ -45,15 +43,6 @@ var host = builder.Build();
 // Fail fast on misconfig instead of surfacing it later as silent no-sends.
 if (string.IsNullOrWhiteSpace(resend.ApiKey))
     return Fatal("no Resend API key configured (set Resend:ApiKey or the RESEND_API_KEY env var)");
-
-try
-{
-    Migrations.Apply(host.Services.GetRequiredService<Db>());
-}
-catch (Exception ex)
-{
-    return Fatal(ex.Message);
-}
 
 // --run-now: one immediate pass (local testing + K8s CronJob), then exit.
 if (args.Contains("--run-now"))
