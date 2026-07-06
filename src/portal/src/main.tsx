@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MsalProvider } from '@azure/msal-react'
+import { BrowserRouter } from 'react-router-dom'
 import { msalInstance } from '@/lib/msal'
 import './index.css'
 import App from './App.tsx'
@@ -14,7 +15,9 @@ try {
   root.render(
     <StrictMode>
       <MsalProvider instance={msalInstance}>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </MsalProvider>
     </StrictMode>,
   )

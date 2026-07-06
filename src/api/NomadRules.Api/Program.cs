@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using NomadRules.Api.Features.Auth;
 using NomadRules.Api.Features.LawChanges;
+using NomadRules.Api.Features.Marketing;
 using NomadRules.Api.Features.Subscribers;
 using NomadRules.Api.Features.Webhooks;
 using NomadRules.Api.Infrastructure;
@@ -13,6 +14,7 @@ builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<SubscriberService>();
 builder.Services.AddScoped<LawChangeService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<MarketingService>();
 
 // Entra External ID (CIAM) issues and signs subscriber tokens; the API only
 // validates against its OIDC metadata (Authority) — no shared secret to manage
@@ -90,6 +92,7 @@ if (app.Environment.IsDevelopment())
 
 SubscriberEndpoints.Map(app);
 AuthEndpoints.Map(app);
+MarketingEndpoints.Map(app);
 StripeWebhookEndpoints.Map(app);
 
 app.Run();
