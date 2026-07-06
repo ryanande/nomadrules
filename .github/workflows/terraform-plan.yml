@@ -18,6 +18,16 @@ jobs:
     defaults:
       run:
         working-directory: infra/terraform
+    # Variables with no default (see variables.tf) — real values, not secrets
+    # except the CIAM client ID. Terraform picks these up automatically via the
+    # TF_VAR_<name> convention.
+    env:
+      TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_ciam_tenant_id: ${{ vars.TF_VAR_CIAM_TENANT_ID }}
+      TF_VAR_ciam_tenant_domain: ${{ vars.CIAM_TENANT_DOMAIN }}
+      TF_VAR_ciam_terraform_client_id: ${{ secrets.AZURE_CIAM_CLIENT_ID }}
+      TF_VAR_break_glass_object_id: ${{ vars.BREAK_GLASS_OBJECT_ID }}
+      TF_VAR_team_role_assignments: ${{ vars.TEAM_ROLE_ASSIGNMENTS }}
     steps:
       - uses: actions/checkout@v4
 

@@ -27,18 +27,17 @@ locals {
 resource "azurerm_user_assigned_identity" "service" {
   for_each            = local.service_secrets
   name                = "id-nomadrules-${each.key}"
-  location            = data.azurerm_resource_group.main.location
-  resource_group_name = data.azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
 }
 
 resource "azurerm_federated_identity_credential" "service" {
-  for_each            = local.service_secrets
-  name                = "fic-nomadrules-${each.key}"
-  resource_group_name = data.azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.service[each.key].id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:${var.app_namespace}:${each.key}"
+  for_each  = local.service_secrets
+  name      = "fic-nomadrules-${each.key}"
+  parent_id = azurerm_user_assigned_identity.service[each.key].id
+  audience  = ["api://AzureADTokenExchange"]
+  issuer    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject   = "system:serviceaccount:${var.app_namespace}:${each.key}"
 }
 
 # Placeholder secret shells for credentials Terraform can't generate itself (real

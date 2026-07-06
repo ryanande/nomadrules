@@ -1,10 +1,18 @@
 # --- Subscriber-facing plane: Entra External ID (CIAM) tenant ---
 # CIAM lives in a separate tenant from the workforce directory (see design.md),
-# so it gets its own provider alias. The Terraform identity must additionally
-# be granted Application Administrator in the CIAM tenant during bootstrap.
+# so it gets its own provider alias AND its own app registration/identity
+# (`Terraform-NomadRules-CIAM`, created directly in the CIAM tenant during
+# bootstrap) — the workforce Terraform identity is single-tenant and structurally
+# cannot authenticate into a foreign tenant, and converting it to multi-tenant
+# would let a compromised workforce/deploy identity reach into the
+# customer-facing tenant too. Native OIDC (no `azure/login` dependency): this
+# identity has its own GitHub federated credentials, separate from the
+# workforce identity's.
 provider "azuread" {
   alias     = "ciam"
   tenant_id = var.ciam_tenant_id
+  client_id = var.ciam_terraform_client_id
+  use_oidc  = true
 }
 
 resource "azuread_application" "subscriber_portal" {

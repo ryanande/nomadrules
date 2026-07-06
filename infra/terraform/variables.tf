@@ -4,23 +4,27 @@ variable "subscription_id" {
 }
 
 variable "resource_group_name" {
-  description = "Resource group containing the Key Vault, AKS cluster, ACR, and DB"
+  description = "Resource group to create for the Key Vault, AKS cluster, ACR, and DB (green-field — nothing pre-exists)"
   type        = string
+  default     = "rg-nomadrules"
 }
 
-variable "key_vault_name" {
-  description = "Name of the existing Key Vault to bring under RBAC management"
+variable "location" {
+  description = "Azure region for the resource group and all resources created within it"
   type        = string
+  default     = "eastus"
+}
+
+variable "kubernetes_version" {
+  description = "AKS Kubernetes version, pinned deliberately (not left to Azure's provisioning-time default) so the running version is documented and only changes on a reviewed bump — see resources.tf's prevent_destroy guard. Check `az aks get-versions --location <region>` before bumping."
+  type        = string
+  default     = "1.35.5" # latest patch of the second-newest minor as of this writing — one minor behind for field-tested stability
 }
 
 variable "aks_cluster_name" {
-  description = "Name of the existing AKS cluster"
+  description = "Name for the new AKS cluster"
   type        = string
-}
-
-variable "acr_name" {
-  description = "Name of the existing Azure Container Registry"
-  type        = string
+  default     = "aks-nomadrules"
 }
 
 variable "ciam_tenant_id" {
@@ -33,10 +37,16 @@ variable "ciam_tenant_domain" {
   type        = string
 }
 
+variable "ciam_terraform_client_id" {
+  description = "Client ID of Terraform-NomadRules-CIAM, the dedicated app registration created directly in the CIAM tenant for Terraform to manage it (see README.md) — distinct from the workforce Terraform identity, which is single-tenant and cannot authenticate into the CIAM tenant"
+  type        = string
+}
+
 variable "portal_redirect_uris" {
   description = "Redirect URIs the Portal uses after Entra External ID sign-in (dev + prod)"
   type        = list(string)
-  default     = ["http://localhost:5173", "https://portal.nomadrules.com"]
+  # Trailing slash required: Entra rejects a root URI (no path segment) without one.
+  default = ["http://localhost:5173/", "https://portal.nomadrules.com/"]
 }
 
 variable "team_role_assignments" {
@@ -84,25 +94,6 @@ variable "app_namespace" {
   description = "Kubernetes namespace the app workloads (and their ServiceAccounts) run in"
   type        = string
   default     = "nomadrules-services"
-}
-
-# --- AKS/Key Vault reconciliation (resources.tf) ---
-# No defaults on purpose: these MUST be populated from `az aks show` / `az keyvault
-# show` output before the first `terraform plan` against the imported resources is
-# trustworthy. See README "Reconciling AKS/Key Vault/ACR before the first apply".
-variable "aks_reconcile" {
-  description = "Live AKS/Key Vault attributes an operator must confirm before importing (see README.md) — no defaults, must be supplied via terraform.tfvars"
-  type = object({
-    dns_prefix          = string
-    kubernetes_version  = string
-    sku_tier            = string
-    node_pool_name      = string
-    node_vm_size        = string
-    node_count          = number
-    network_plugin      = string # must be "azure" — see design.md; "kubenet" means the cluster needs recreating, not importing
-    key_vault_tenant_id = string
-    key_vault_sku       = string
-  })
 }
 
 # --- Postgres (postgres.tf) ---
