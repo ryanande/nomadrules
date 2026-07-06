@@ -20,12 +20,16 @@ This mirrors the same "requires an operator with real Azure access" constraint d
 Before the first `terraform init`/`apply`, someone with Application Administrator + Owner must, by hand:
 
 1. Confirm Entra External ID (CIAM) is enabled on the tenant (or create the CIAM tenant).
-2. Create the Terraform service principal, grant it Owner on the target resource group and Application Administrator on both the workforce and CIAM tenants.
-3. Add a GitHub OIDC federated credential on that service principal, scoped to `var.github_repo` + the `main` branch, so CI never stores a client secret.
-4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled.
+2. Create the Terraform service principal (`Terraform-NomadRules`), grant it `Contributor` + `User Access Administrator` on the target subscription and `Application Administrator` on both the workforce and CIAM tenants.
+3. Add two GitHub OIDC federated credentials on that service principal — one for `push`-to-`main` (`repo:<owner>/<repo>:ref:refs/heads/main`, used by `terraform-apply.yml`) and one for `pull_request` (`repo:<owner>/<repo>:pull_request`, used by `terraform-plan.yml`) — so CI never stores a client secret. This is the **same identity** the deploy workflows (`api.yml`, `crawler.yml`, etc.) use, via the `AZURE_CLIENT_ID` secret — see `ci-deploy.tf`.
+4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled. Set the resulting names as GitHub repo **Variables** (Settings > Variables, not Secrets — they aren't sensitive): `TF_BACKEND_RESOURCE_GROUP`, `TF_BACKEND_STORAGE_ACCOUNT`.
 5. Create a `terraform-apply` GitHub Environment (Settings > Environments) with required reviewers, so `terraform-apply.yml`'s auto-apply-on-merge always waits for a human checkpoint before touching real infrastructure.
 
-Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`, not hardcoded in `backend.tf`.
+Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`. In CI, `terraform-plan.yml`/`terraform-apply.yml` write `backend.ci.hcl` from the `TF_BACKEND_*` repo Variables above before running `terraform init` — the file itself is gitignored (see `backend.ci.hcl.example` for the format) since it's regenerated every run, not committed. Locally, copy `backend.ci.hcl.example` to `backend.ci.hcl` and fill in the real values yourself.
+
+### Accepted trade-off: one identity, not two
+
+The original design (see `openspec/changes/azure-entra-auth-iac/design.md`) called for a separate, narrower identity for CI deploys (`api.yml`, `crawler.yml`, etc. — AKS-writer only) versus the Terraform-apply identity (subscription Contributor + User Access Administrator). What was actually bootstrapped is **one** identity (`Terraform-NomadRules`) used everywhere, via the single `AZURE_CLIENT_ID` secret. This means a compromised deploy workflow now has a path to subscription-level Contributor/User Access Administrator, not just AKS-cluster write. Accepted deliberately given the current two-person team; revisit (split back into two identities) if that blast radius stops being acceptable — see `ci-deploy.tf`.
 
 ## Break-glass account
 
