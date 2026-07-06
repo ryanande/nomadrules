@@ -39,12 +39,6 @@ variable "portal_redirect_uris" {
   default     = ["http://localhost:5173", "https://portal.nomadrules.com"]
 }
 
-variable "github_repo" {
-  description = "GitHub repo in 'owner/name' form, used to scope the OIDC federated credential"
-  type        = string
-  default     = "ryanande/nomadrules"
-}
-
 variable "team_role_assignments" {
   description = "Map of workforce Entra ID object ID -> app role name (Admin, Operator, or ReadOnly) for each team member"
   type        = map(string)

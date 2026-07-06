@@ -20,8 +20,8 @@ This mirrors the same "requires an operator with real Azure access" constraint d
 Before the first `terraform init`/`apply`, someone with Application Administrator + Owner must, by hand:
 
 1. Confirm Entra External ID (CIAM) is enabled on the tenant (or create the CIAM tenant).
-2. Create the Terraform service principal, grant it Owner on the target resource group and Application Administrator on both the workforce and CIAM tenants.
-3. Add a GitHub OIDC federated credential on that service principal, scoped to `var.github_repo` + the `main` branch, so CI never stores a client secret.
+2. Create the Terraform service principal (`Terraform-NomadRules`), grant it `Contributor` + `User Access Administrator` on the target subscription and `Application Administrator` on both the workforce and CIAM tenants.
+3. Add two GitHub OIDC federated credentials on that service principal — one for `push`-to-`main` (`repo:<owner>/<repo>:ref:refs/heads/main`, used by `terraform-apply.yml`) and one for `pull_request` (`repo:<owner>/<repo>:pull_request`, used by `terraform-plan.yml`) — so CI never stores a client secret. This is the **same identity** the deploy workflows (`api.yml`, `crawler.yml`, etc.) use, via the `AZURE_CLIENT_ID` secret — see `ci-deploy.tf`.
 4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled.
 5. Create a `terraform-apply` GitHub Environment (Settings > Environments) with required reviewers, so `terraform-apply.yml`'s auto-apply-on-merge always waits for a human checkpoint before touching real infrastructure.
 
