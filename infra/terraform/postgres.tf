@@ -10,8 +10,8 @@ resource "random_password" "postgres_admin" {
 
 resource "azurerm_postgresql_flexible_server" "main" {
   name                = "${var.resource_group_name}-postgres"
-  resource_group_name = data.azurerm_resource_group.main.name
-  location            = data.azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
 
   delegated_subnet_id = azurerm_subnet.postgres.id
   private_dns_zone_id = azurerm_private_dns_zone.postgres.id

@@ -1,45 +1,40 @@
-# Resource group itself is not managed here — nothing in this change alters the RG,
-# so it stays a data source (scope target only).
-data "azurerm_resource_group" "main" {
-  name = var.resource_group_name
+# Green-field: nothing pre-existed in this subscription (confirmed empty before
+# this change), so the resource group, AKS, Key Vault, and ACR are all created
+# here, not imported. Cheapest-viable tier choices for a pre-launch, two-person
+# project (see openspec/changes/azure-entra-auth-iac follow-up discussion):
+# AKS Free tier control plane, a single Standard_B2s node, ACR Basic (no private
+# endpoint support at this tier — network.tf only wires a private endpoint for
+# Key Vault). Revisit tiers once there's real traffic/uptime requirements.
+data "azurerm_client_config" "current" {}
+
+resource "azurerm_resource_group" "main" {
+  name     = var.resource_group_name
+  location = var.location
 }
 
-# --- AKS, Key Vault, and ACR: brought under full management via `import` blocks ---
-# These three previously existed as `data` sources only (see git history / README).
-# `azure-entra-auth-iac` left them that way because bringing them under management
-# needs an operator with real Azure access to reconcile the resource block's
-# attributes against the live resource before the first `terraform plan` is
-# trustworthy — that reconciliation is NOT done here (no live Azure access in this
-# session). The `*_reconcile` variables below are unset placeholders; an operator
-# MUST populate them from `az aks show` / `az keyvault show` / `az acr show` output
-# and confirm `terraform plan` reports no unexpected diff before ever running
-# `terraform apply` against these three resources. See README "Reconciling AKS/Key
-# Vault/ACR before the first apply".
-
-import {
-  to = azurerm_kubernetes_cluster.main
-  id = "/subscriptions/${var.subscription_id}/resourceGroups/${var.resource_group_name}/providers/Microsoft.ContainerService/managedClusters/${var.aks_cluster_name}"
+# Short random suffix keeps Key Vault/ACR names globally unique without forcing
+# an operator to hand-pick and availability-check a name before every apply.
+resource "random_string" "suffix" {
+  length  = 6
+  special = false
+  upper   = false
 }
 
 resource "azurerm_kubernetes_cluster" "main" {
   name                = var.aks_cluster_name
-  location            = data.azurerm_resource_group.main.location
-  resource_group_name = data.azurerm_resource_group.main.name
-  dns_prefix          = var.aks_reconcile.dns_prefix
-  kubernetes_version  = var.aks_reconcile.kubernetes_version
-  sku_tier            = var.aks_reconcile.sku_tier
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  dns_prefix          = "nomadrules"
+  sku_tier            = "Free"
 
   # Required for per-service Workload Identity (see aks-workload-security spec).
-  # If the existing cluster predates this and its network plugin is `kubenet`
-  # (not `azure_cni`), these flags — and private-endpoint reachability — cannot
-  # be retrofitted; the cluster must be recreated instead (see design.md).
   oidc_issuer_enabled       = true
   workload_identity_enabled = true
 
   default_node_pool {
-    name           = var.aks_reconcile.node_pool_name
-    vm_size        = var.aks_reconcile.node_vm_size
-    node_count     = var.aks_reconcile.node_count
+    name           = "system"
+    vm_size        = "Standard_B2s"
+    node_count     = 1
     vnet_subnet_id = azurerm_subnet.aks.id
   }
 
@@ -48,7 +43,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   network_profile {
-    network_plugin = var.aks_reconcile.network_plugin # must be "azure" (Azure CNI) — see design.md
+    network_plugin = "azure" # required for Workload Identity's pod-to-VNet networking — see design.md
   }
 
   # AKS addon that installs the Secrets Store CSI Driver + Azure Key Vault provider
@@ -66,24 +61,16 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 }
 
-import {
-  to = azurerm_key_vault.main
-  id = "/subscriptions/${var.subscription_id}/resourceGroups/${var.resource_group_name}/providers/Microsoft.KeyVault/vaults/${var.key_vault_name}"
-}
-
 resource "azurerm_key_vault" "main" {
-  name                = var.key_vault_name
-  location            = data.azurerm_resource_group.main.location
-  resource_group_name = data.azurerm_resource_group.main.name
-  tenant_id           = var.aks_reconcile.key_vault_tenant_id
-  sku_name            = var.aks_reconcile.key_vault_sku
+  name                = "kv-nomadrules-${random_string.suffix.result}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
 
-  enable_rbac_authorization = true # already RBAC-mode per azure-entra-auth-iac
+  rbac_authorization_enabled = true # RBAC-mode per azure-entra-auth-iac, not access policies
 
-  # No public data-plane path — reachable only via the private endpoint in
-  # network.tf. NOTE: if the live vault currently has public access enabled,
-  # applying this is what flips it off; confirm no client still depends on the
-  # public endpoint before applying (see design.md risk).
+  # No public data-plane path — reachable only via the private endpoint in network.tf.
   public_network_access_enabled = false
 
   network_acls {
@@ -96,22 +83,16 @@ resource "azurerm_key_vault" "main" {
   }
 }
 
-import {
-  to = azurerm_container_registry.main
-  id = "/subscriptions/${var.subscription_id}/resourceGroups/${var.resource_group_name}/providers/Microsoft.ContainerRegistry/registries/${var.acr_name}"
-}
-
 resource "azurerm_container_registry" "main" {
-  name                = var.acr_name
-  location            = data.azurerm_resource_group.main.location
-  resource_group_name = data.azurerm_resource_group.main.name
+  name                = "acrnomadrules${random_string.suffix.result}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
 
-  # Premium is required for private endpoint support — an in-place SKU upgrade
-  # (Basic/Standard -> Premium) if the live registry isn't already Premium, not
-  # a destructive change.
-  sku = "Premium"
-
-  public_network_access_enabled = false
+  # Basic: cheapest tier. No private-link support at this SKU (Premium is
+  # required for that — see design.md's original private-endpoint plan); RBAC
+  # (rbac.tf's AcrPush grant) is the access control instead of network isolation.
+  sku                           = "Basic"
+  public_network_access_enabled = true
 
   lifecycle {
     prevent_destroy = true

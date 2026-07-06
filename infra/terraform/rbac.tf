@@ -15,7 +15,7 @@ locals {
       { azure_role = "Azure Kubernetes Service RBAC Reader", scope = azurerm_kubernetes_cluster.main.id },
     ]
     ReadOnly = [
-      { azure_role = "Reader", scope = data.azurerm_resource_group.main.id },
+      { azure_role = "Reader", scope = azurerm_resource_group.main.id },
     ]
   }
 
