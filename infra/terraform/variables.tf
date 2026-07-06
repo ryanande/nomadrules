@@ -15,6 +15,12 @@ variable "location" {
   default     = "eastus"
 }
 
+variable "kubernetes_version" {
+  description = "AKS Kubernetes version, pinned deliberately (not left to Azure's provisioning-time default) so the running version is documented and only changes on a reviewed bump — see resources.tf's prevent_destroy guard. Check `az aks get-versions --location <region>` before bumping."
+  type        = string
+  default     = "1.35.5" # latest patch of the second-newest minor as of this writing — one minor behind for field-tested stability
+}
+
 variable "aks_cluster_name" {
   description = "Name for the new AKS cluster"
   type        = string

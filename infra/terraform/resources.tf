@@ -26,6 +26,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   resource_group_name = azurerm_resource_group.main.name
   dns_prefix          = "nomadrules"
   sku_tier            = "Free"
+  kubernetes_version  = var.kubernetes_version
 
   # Required for per-service Workload Identity (see aks-workload-security spec).
   oidc_issuer_enabled       = true
