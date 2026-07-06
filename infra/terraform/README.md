@@ -27,6 +27,10 @@ Before the first `terraform init`/`apply`, someone with Application Administrato
 
 Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`. In CI, `terraform-plan.yml`/`terraform-apply.yml` write `backend.ci.hcl` from the `TF_BACKEND_*` repo Variables above before running `terraform init` — the file itself is gitignored (see `backend.ci.hcl.example` for the format) since it's regenerated every run, not committed. Locally, copy `backend.ci.hcl.example` to `backend.ci.hcl` and fill in the real values yourself.
 
+### Accepted trade-off: one identity, not two
+
+The original design (see `openspec/changes/azure-entra-auth-iac/design.md`) called for a separate, narrower identity for CI deploys (`api.yml`, `crawler.yml`, etc. — AKS-writer only) versus the Terraform-apply identity (subscription Contributor + User Access Administrator). What was actually bootstrapped is **one** identity (`Terraform-NomadRules`) used everywhere, via the single `AZURE_CLIENT_ID` secret. This means a compromised deploy workflow now has a path to subscription-level Contributor/User Access Administrator, not just AKS-cluster write. Accepted deliberately given the current two-person team; revisit (split back into two identities) if that blast radius stops being acceptable — see `ci-deploy.tf`.
+
 ## Break-glass account
 
 Exactly one account — the human who ran the manual bootstrap above, or the bootstrap service principal itself — retains subscription **Owner** outside these Terraform-managed role assignments. This is the recovery path if a bad `terraform apply` locks out every other identity. Do not add this account to `var.team_role_assignments`; its access is intentionally out-of-band.
