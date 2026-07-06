@@ -29,10 +29,10 @@ This creates database **`nomadrules_dev`** (user `nomadrules` / password `nomadr
 Host=localhost;Port=5432;Database=nomadrules_dev;Username=nomadrules;Password=nomadrules
 ```
 
-> ⚠️ **Known gotcha:** `src/api/NomadRules.Api/appsettings.json` currently defaults to
-> `Database=nomadrules` (not `nomadrules_dev`). Until that's fixed, override it for the API with
-> `ConnectionStrings__Postgres="...Database=nomadrules_dev..."` (see step 3). The other services
-> already default to `nomadrules_dev`.
+> The API connects to this out of the box in local dev — its launch profile sets
+> `ASPNETCORE_ENVIRONMENT=Development` and `appsettings.Development.json` uses `nomadrules_dev`.
+> (The base `appsettings.json` default was also aligned to `nomadrules_dev` for consistency; production
+> resolves the real connection string from Key Vault regardless.)
 
 ## 2. Apply migrations
 
@@ -49,8 +49,8 @@ Re-running is idempotent (already-applied scripts are skipped).
 ## 3. Run the services
 
 Each is a separate process. Point every one at the same `nomadrules_dev`. The C# services read
-`ConnectionStrings:Postgres` from `appsettings.json` (already correct except the API — see the
-gotcha above), or `ConnectionStrings__Postgres` / `POSTGRES_CONNECTION_STRING` from the env.
+`ConnectionStrings:Postgres` from `appsettings.json` / `appsettings.Development.json` (all default to
+`nomadrules_dev` for local dev), or `ConnectionStrings__Postgres` / `POSTGRES_CONNECTION_STRING` from the env.
 
 Export once for the shell:
 
@@ -138,8 +138,6 @@ Without it, the API boots with dummy values and only the anonymous register endp
 
 - **Secrets are env vars locally, Key Vault in AKS.** Never commit real keys; the compose file and
   appsettings carry only local placeholders.
-- **API DB-name mismatch** (step 1 gotcha) — the API's default connection string points at
-  `nomadrules` instead of `nomadrules_dev`.
 - **Duplicate `V003` migration scripts** (`V003__entra_oid.sql` + `V003__law_change_dedup.sql`) —
   landed from two parallel changes. DbUp keys on the full script name so both apply, but the shared
   version number is a smell worth renumbering.
