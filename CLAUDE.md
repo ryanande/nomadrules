@@ -196,11 +196,11 @@ nomadrules/
 
 ## Running the System Locally
 
-See **docs/LOCAL_DEVELOPMENT.md** (to be created) for:
-- docker-compose setup (Postgres, RabbitMQ, optional Redis)
-- Monorepo build and test
-- Portal dev server
-- Local webhook tunneling for Stripe
+See **docs/LOCAL_DEVELOPMENT.md** for the full runbook:
+- Postgres via `infra/docker-compose.yml` + the DbUp migration runner
+- Running each service as a process (api, ingest, summarizer, email-delivery)
+- Crawler → local-file queue → ingest wiring (no local broker; Service Bus in prod)
+- Portal dev server and its Entra config
 
 ---
 
