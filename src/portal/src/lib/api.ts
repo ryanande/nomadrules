@@ -93,4 +93,26 @@ export const api = {
     request<{ items: LawChangeFeedItem[]; total_count: number }>(
       `/api/subscribers/${id}/feed?limit=${limit}&offset=${offset}`,
     ),
+
+  // Public marketing funnel — anonymous, no token attached.
+  captureLead: (email: string, source?: string) =>
+    request<void>('/api/leads', {
+      method: 'POST',
+      body: JSON.stringify({ email, source }),
+      anonymous: true,
+    }),
+
+  // `website` is the honeypot: left empty by the form, must stay empty for humans.
+  contact: (body: {
+    name: string
+    email: string
+    topic?: string
+    message: string
+    website?: string
+  }) =>
+    request<void>('/api/contact', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      anonymous: true,
+    }),
 }

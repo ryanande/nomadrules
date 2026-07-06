@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using NomadRules.Api.Features.Auth;
 using NomadRules.Api.Features.LawChanges;
+using NomadRules.Api.Features.Marketing;
 using NomadRules.Api.Features.Subscribers;
 using NomadRules.Api.Features.Webhooks;
 using NomadRules.Api.Infrastructure;
@@ -13,6 +14,7 @@ builder.Services.AddSingleton<Db>();
 builder.Services.AddScoped<SubscriberService>();
 builder.Services.AddScoped<LawChangeService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<MarketingService>();
 
 // Entra External ID (CIAM) issues and signs subscriber tokens; the API only
 // validates against its OIDC metadata (Authority) — no shared secret to manage
@@ -57,7 +59,25 @@ builder.Services.AddRateLimiter(o =>
             QueueLimit = 0,
         });
     });
+
+    // Public, anonymous marketing forms (leads/contact) are a spam magnet, so
+    // they get a much tighter per-IP budget than general API traffic — this
+    // stacks under the global limiter above.
+    o.AddPolicy("marketing", ctx =>
+    {
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
 });
+
+// Cap request bodies globally: no endpoint here accepts uploads, and the public
+// marketing writes must not accept multi-MB text blobs. 1 MB is generous for JSON.
+builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = 1 * 1024 * 1024);
 
 builder.Services.AddOpenApi();
 
@@ -90,6 +110,7 @@ if (app.Environment.IsDevelopment())
 
 SubscriberEndpoints.Map(app);
 AuthEndpoints.Map(app);
+MarketingEndpoints.Map(app);
 StripeWebhookEndpoints.Map(app);
 
 app.Run();
