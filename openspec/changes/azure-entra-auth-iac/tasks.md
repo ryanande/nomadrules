@@ -5,7 +5,7 @@
 - [ ] 1.1 Confirm Azure Entra External ID (CIAM) is enabled on the tenant, or create the CIAM tenant if not
 - [x] 1.2 Create the Terraform service principal (`Terraform-NomadRules`) — granted `Contributor` + `User Access Administrator` on the subscription and `Application Administrator` in the workforce tenant
 - [x] 1.3 Create GitHub OIDC federated credentials on the Terraform service principal, scoped to this repo — one for `push`-to-`main` (`terraform-apply.yml`) and one for `pull_request` (`terraform-plan.yml`); `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_SUBSCRIPTION_ID` GitHub secrets set. Note: this is a single identity shared with the CI deploy workflows (see `ci-deploy.tf`), not the two-identity split originally designed — a deliberate simplification.
-- [ ] 1.4 Provision the remote state backend (Azure Storage account + container) by hand, with state locking
+- [ ] 1.4 Provision the remote state backend (Azure Storage account + container) by hand, with state locking; set `TF_BACKEND_RESOURCE_GROUP`/`TF_BACKEND_STORAGE_ACCOUNT` as GitHub repo Variables so CI can materialize `backend.ci.hcl`
 - [x] 1.5 Create a `terraform-apply` GitHub Environment with required reviewers (Settings > Environments) — configured with Ryan as required reviewer
 
 ## 2. Terraform foundation (`infra/terraform/`)

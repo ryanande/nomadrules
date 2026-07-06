@@ -34,5 +34,17 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
+      # backend.ci.hcl is gitignored (state-backend location isn't secret, but
+      # isn't committed either — see README.md); materialize it from repo
+      # Variables (Settings > Variables, not Secrets) instead.
+      - name: Write backend config
+        run: |
+          cat > backend.ci.hcl <<EOF
+          resource_group_name  = "${{ vars.TF_BACKEND_RESOURCE_GROUP }}"
+          storage_account_name = "${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}"
+          container_name       = "tfstate"
+          key                  = "nomadrules.tfstate"
+          EOF
+
       - run: terraform init -backend-config=backend.ci.hcl
       - run: terraform apply -input=false -auto-approve

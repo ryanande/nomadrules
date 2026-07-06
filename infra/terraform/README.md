@@ -22,10 +22,10 @@ Before the first `terraform init`/`apply`, someone with Application Administrato
 1. Confirm Entra External ID (CIAM) is enabled on the tenant (or create the CIAM tenant).
 2. Create the Terraform service principal (`Terraform-NomadRules`), grant it `Contributor` + `User Access Administrator` on the target subscription and `Application Administrator` on both the workforce and CIAM tenants.
 3. Add two GitHub OIDC federated credentials on that service principal — one for `push`-to-`main` (`repo:<owner>/<repo>:ref:refs/heads/main`, used by `terraform-apply.yml`) and one for `pull_request` (`repo:<owner>/<repo>:pull_request`, used by `terraform-plan.yml`) — so CI never stores a client secret. This is the **same identity** the deploy workflows (`api.yml`, `crawler.yml`, etc.) use, via the `AZURE_CLIENT_ID` secret — see `ci-deploy.tf`.
-4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled.
+4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled. Set the resulting names as GitHub repo **Variables** (Settings > Variables, not Secrets — they aren't sensitive): `TF_BACKEND_RESOURCE_GROUP`, `TF_BACKEND_STORAGE_ACCOUNT`.
 5. Create a `terraform-apply` GitHub Environment (Settings > Environments) with required reviewers, so `terraform-apply.yml`'s auto-apply-on-merge always waits for a human checkpoint before touching real infrastructure.
 
-Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`, not hardcoded in `backend.tf`.
+Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`. In CI, `terraform-plan.yml`/`terraform-apply.yml` write `backend.ci.hcl` from the `TF_BACKEND_*` repo Variables above before running `terraform init` — the file itself is gitignored (see `backend.ci.hcl.example` for the format) since it's regenerated every run, not committed. Locally, copy `backend.ci.hcl.example` to `backend.ci.hcl` and fill in the real values yourself.
 
 ## Break-glass account
 
