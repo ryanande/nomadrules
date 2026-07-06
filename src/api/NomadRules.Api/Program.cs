@@ -59,7 +59,25 @@ builder.Services.AddRateLimiter(o =>
             QueueLimit = 0,
         });
     });
+
+    // Public, anonymous marketing forms (leads/contact) are a spam magnet, so
+    // they get a much tighter per-IP budget than general API traffic — this
+    // stacks under the global limiter above.
+    o.AddPolicy("marketing", ctx =>
+    {
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
 });
+
+// Cap request bodies globally: no endpoint here accepts uploads, and the public
+// marketing writes must not accept multi-MB text blobs. 1 MB is generous for JSON.
+builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = 1 * 1024 * 1024);
 
 builder.Services.AddOpenApi();
 

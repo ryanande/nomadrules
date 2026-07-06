@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMsal } from '@azure/msal-react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -96,9 +97,9 @@ export function Pricing() {
 
       <p className="mt-10 text-center text-sm text-muted-foreground">
         Need the API or team seats?{' '}
-        <a href="/business" className="font-medium text-rv-rust hover:underline">
+        <Link to="/business" className="font-medium text-rv-rust hover:underline">
           See the Business tier
-        </a>
+        </Link>
         . Prices in USD.
       </p>
     </div>

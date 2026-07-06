@@ -7,10 +7,22 @@ namespace NomadRules.Api.Features.Marketing;
 // Program.cs; spam mitigation here is the honeypot check plus input validation.
 public static class MarketingEndpoints
 {
+    // Field caps: these are public anonymous write endpoints, so every stored
+    // TEXT column gets an explicit length bound to prevent multi-MB blobs from
+    // filling the DB (a 1MB body cap also backstops this in Program.cs).
+    private const int MaxSource = 64;
+    private const int MaxName = 120;
+    private const int MaxTopic = 40;
+    private const int MaxMessage = 4000;
+
     public static void Map(WebApplication app)
     {
-        app.MapPost("/api/leads", CaptureLead).AllowAnonymous().WithTags("Marketing");
-        app.MapPost("/api/contact", SubmitContact).AllowAnonymous().WithTags("Marketing");
+        // Stricter, endpoint-specific limiter (see Program.cs "marketing" policy)
+        // on top of the global limiter — these are spam-magnet public forms.
+        app.MapPost("/api/leads", CaptureLead).AllowAnonymous().WithTags("Marketing")
+            .RequireRateLimiting("marketing");
+        app.MapPost("/api/contact", SubmitContact).AllowAnonymous().WithTags("Marketing")
+            .RequireRateLimiting("marketing");
     }
 
     private static async Task<IResult> CaptureLead(
@@ -19,6 +31,8 @@ public static class MarketingEndpoints
     {
         if (!IsValidEmail(req.Email))
             return Results.BadRequest(new { error = "invalid_email", message = "Valid email is required" });
+        if (TooLong(req.Source, MaxSource))
+            return Results.BadRequest(new { error = "invalid_source", message = "Source is too long" });
 
         await svc.CaptureLeadAsync(req.Email.Trim(), req.Source);
         // Idempotent on the client's side too — a repeat email is still a 202.
@@ -34,16 +48,20 @@ public static class MarketingEndpoints
         if (!string.IsNullOrWhiteSpace(req.Website))
             return Results.Accepted();
 
-        if (string.IsNullOrWhiteSpace(req.Name))
-            return Results.BadRequest(new { error = "invalid_name", message = "Name is required" });
+        if (string.IsNullOrWhiteSpace(req.Name) || TooLong(req.Name, MaxName))
+            return Results.BadRequest(new { error = "invalid_name", message = "Name is required (max 120 chars)" });
         if (!IsValidEmail(req.Email))
             return Results.BadRequest(new { error = "invalid_email", message = "Valid email is required" });
-        if (string.IsNullOrWhiteSpace(req.Message))
-            return Results.BadRequest(new { error = "invalid_message", message = "Message is required" });
+        if (TooLong(req.Topic, MaxTopic))
+            return Results.BadRequest(new { error = "invalid_topic", message = "Topic is too long" });
+        if (string.IsNullOrWhiteSpace(req.Message) || TooLong(req.Message, MaxMessage))
+            return Results.BadRequest(new { error = "invalid_message", message = "Message is required (max 4000 chars)" });
 
         await svc.SaveContactAsync(req.Name.Trim(), req.Email.Trim(), req.Topic, req.Message.Trim());
         return Results.Accepted();
     }
+
+    private static bool TooLong(string? value, int max) => value is not null && value.Length > max;
 
     // ponytail: good-enough email check; matches the SubscriberEndpoints bar. A
     // real deliverability check belongs downstream (Resend), not at this gate.
