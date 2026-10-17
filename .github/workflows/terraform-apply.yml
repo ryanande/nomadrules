@@ -51,7 +51,15 @@ jobs:
 
       # The vault firewall admits only this runner's IP (see resources.tf).
       - name: Allow runner IP through Key Vault firewall
-        run: echo "TF_VAR_key_vault_allowed_ips=[\"$(curl -fsS https://api.ipify.org)\"]" >> "$GITHUB_ENV"
+        run: |
+          IP="$(curl -fsS https://api.ipify.org)"
+          echo "TF_VAR_key_vault_allowed_ips=[\"$IP\"]" >> "$GITHUB_ENV"
+          # Terraform refreshes existing secrets before it can update the vault ACL,
+          # so admit this runner first (no-op on the very first run, before the vault exists).
+          if az keyvault show --name "$TF_VAR_key_vault_name" --resource-group "$TF_VAR_resource_group_name" >/dev/null 2>&1; then
+            az keyvault network-rule add --name "$TF_VAR_key_vault_name" --resource-group "$TF_VAR_resource_group_name" --ip-address "$IP" >/dev/null
+            sleep 30
+          fi
 
       # backend.ci.hcl is gitignored (state-backend location isn't secret, but
       # isn't committed either — see README.md); materialize it from repo
