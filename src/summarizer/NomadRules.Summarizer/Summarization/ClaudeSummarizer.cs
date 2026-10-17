@@ -9,7 +9,7 @@ public class ClaudeSummarizer(AnthropicClient client, ClaudeOptions options, ILo
     public static readonly string PromptPath =
         Path.Combine(AppContext.BaseDirectory, "Prompts", "SummarizeInsuranceChange.txt");
 
-    private readonly Lazy<string> _systemPrompt = new(() => File.ReadAllText(PromptPath));
+    private readonly Lazy<string> _promptTemplate = new(() => File.ReadAllText(PromptPath));
 
     private static readonly Dictionary<string, JsonElement> Schema = new()
     {
@@ -26,7 +26,7 @@ public class ClaudeSummarizer(AnthropicClient client, ClaudeOptions options, ILo
 
     // Throws SummarizationException on bad output; OperationCanceledException on timeout;
     // AnthropicRateLimitException (429) propagates so the worker can defer.
-    public async Task<SummaryResult> SummarizeAsync(string rawContent, CancellationToken ct)
+    public async Task<SummaryResult> SummarizeAsync(string rawContent, string state, CancellationToken ct)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(options.TimeoutSeconds));
@@ -35,7 +35,7 @@ public class ClaudeSummarizer(AnthropicClient client, ClaudeOptions options, ILo
         {
             Model = options.Model,
             MaxTokens = 1024,
-            System = _systemPrompt.Value,
+            System = PromptBuilder.Build(_promptTemplate.Value, state),
             OutputConfig = new OutputConfig { Format = new JsonOutputFormat { Schema = Schema } },
             Messages =
             [

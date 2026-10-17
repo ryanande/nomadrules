@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NomadRules.Summarizer.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a8e3de1379b605b85736902bb71d247d38b5f223")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+469ee99d8afa2a8ec61c027d3b5562e1b685b18e")]
 [assembly: System.Reflection.AssemblyProductAttribute("NomadRules.Summarizer.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NomadRules.Summarizer.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

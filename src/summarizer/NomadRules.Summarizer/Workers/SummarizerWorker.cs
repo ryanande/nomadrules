@@ -55,7 +55,7 @@ public class SummarizerWorker(
         try
         {
             var processedBefore = await repo.CountSummarizedAsync();
-            var result = await summarizer.SummarizeAsync(row.RawContent, stoppingToken);
+            var result = await summarizer.SummarizeAsync(row.RawContent, row.State, stoppingToken);
 
             var hold = ReviewGate.ShouldHold(processedBefore, options.ReviewThreshold);
             await repo.MarkSuccessAsync(row.Id, result, reviewed: !hold);
