@@ -4,6 +4,7 @@
 name: db-migrations-image
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -52,6 +53,9 @@ jobs:
     needs: build-push
     runs-on: ubuntu-latest
     environment: deploy
+    concurrency:
+      group: helm-deploy
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: read
