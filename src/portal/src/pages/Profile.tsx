@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { api, type RenewalDates, type Subscriber } from '@/lib/api'
+import { api, ApiError, type RenewalDates, type Subscriber } from '@/lib/api'
+import { STATES } from '@/lib/states'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -27,6 +28,8 @@ export function Profile({ subscriberId }: { subscriberId: string }) {
   const [subscriber, setSubscriber] = useState<Subscriber | null>(null)
   const [dates, setDates] = useState<RenewalDates | null>(null)
   const [saved, setSaved] = useState(false)
+  const [stateSaving, setStateSaving] = useState(false)
+  const [stateError, setStateError] = useState<string | null>(null)
 
   useEffect(() => {
     api.getProfile(subscriberId).then((sub) => {
@@ -54,12 +57,44 @@ export function Profile({ subscriberId }: { subscriberId: string }) {
     setSaved(true)
   }
 
+  async function handleStateChange(code: string) {
+    if (!code || code === subscriber?.state) return
+    setStateSaving(true)
+    setStateError(null)
+    try {
+      setSubscriber(await api.setState(subscriberId, code))
+    } catch (err) {
+      setStateError(err instanceof ApiError ? err.message : 'Could not change your state. Please try again.')
+    } finally {
+      setStateSaving(false)
+    }
+  }
+
   return (
     <div className="mx-auto mt-16 w-full max-w-sm space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{subscriber.email}</CardTitle>
-          <p className="text-sm text-muted-foreground">Domicile: {subscriber.state}</p>
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="domicile-state">Domicile state</Label>
+            <select
+              id="domicile-state"
+              className={inputClass}
+              value={subscriber.state ?? ''}
+              onChange={(e) => handleStateChange(e.target.value)}
+              disabled={stateSaving}
+            >
+              {STATES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Changing this changes which state's law updates you receive.
+            </p>
+            {stateError && <p className="text-sm text-destructive">{stateError}</p>}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
