@@ -13,6 +13,10 @@ public class PromptBuilderTests
         => Assert.Equal("South Dakota", PromptBuilder.Build("{State}", "SD"));
 
     [Fact]
+    public void Build_Federal_SubstitutesTheUnitedStates()
+        => Assert.Equal("the United States", PromptBuilder.Build("{State}", "US"));
+
+    [Fact]
     public void Build_LowercaseCode_Works()
         => Assert.Equal("South Dakota", PromptBuilder.Build("{State}", "sd"));
 

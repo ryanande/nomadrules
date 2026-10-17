@@ -28,6 +28,7 @@ public static class StateNames
     {
         ["TX"] = "Texas",
         ["SD"] = "South Dakota",
+        ["US"] = "the United States", // federal changes
     };
 
     public static string FullName(string code) => Names.TryGetValue(code, out var name) ? name : code;
