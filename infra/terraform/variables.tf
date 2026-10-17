@@ -99,9 +99,9 @@ variable "key_vault_allowed_ips" {
 
 # --- AKS node pool (resources.tf) ---
 variable "aks_node_vm_size" {
-  description = "VM size for the AKS system node pool (the subscription's DSv5 quota is 0; B-series has quota)"
+  description = "VM size for the AKS system node pool (this subscription has no DSv5 or Bsv2 quota in eastus2; DSv6 has 10 cores)"
   type        = string
-  default     = "Standard_B2s_v2"
+  default     = "Standard_D2s_v6"
 }
 
 variable "aks_node_count" {
@@ -112,9 +112,9 @@ variable "aks_node_count" {
 
 # --- Postgres (postgres.tf) ---
 variable "postgres_sku_name" {
-  description = "Postgres Flexible Server compute tier (Burstable B1ms is the default fit for current data volume — see design.md)"
+  description = "Postgres Flexible Server compute tier (Burstable SKUs return SkuNotAvailable for this subscription in eastus2; smallest General Purpose is the fallback)"
   type        = string
-  default     = "B_Standard_B1ms"
+  default     = "GP_Standard_D2ads_v5"
 }
 
 variable "postgres_storage_mb" {
