@@ -61,7 +61,18 @@ function App() {
   if (!subscriber) return <p className="mt-16 text-center text-sm">Signing you in…</p>
 
   // A freshly provisioned subscriber has no domicile yet; ask once before showing Profile/Feed.
-  if (subscriber.state === null) return <SelectState subscriber={subscriber} onSaved={setSubscriber} />
+  if (subscriber.state === null) {
+    return (
+      <>
+        <SelectState subscriber={subscriber} onSaved={setSubscriber} />
+        <div className="mt-4 text-center">
+          <Button variant="ghost" onClick={handleLogout}>
+            Sign out
+          </Button>
+        </div>
+      </>
+    )
+  }
 
   const subscriberId = subscriber.id
 
