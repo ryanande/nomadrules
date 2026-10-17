@@ -34,6 +34,16 @@ public class UnsentLawChangesTests : IDisposable
         Assert.DoesNotContain($"tx-{_tag}", mine);
     }
 
+    [Fact]
+    public async Task UnsentLawChanges_WithNullState_ReturnsNothingEvenWhenFederalItemsExist()
+    {
+        Insert("us", "US");
+
+        var rows = await new DeliveryRepository(_db).UnsentLawChangesAsync($"sub-{_tag}", null, urgentOnly: false);
+
+        Assert.Empty(rows);
+    }
+
     private void Insert(string key, string state)
     {
         using var conn = _db.Open();

@@ -66,8 +66,11 @@ public class DeliveryRepository(Db db)
     // Processed, review-approved law changes for a subscriber's state (plus federal 'US' ones, which apply to
     // everyone) that haven't been sent to them yet.
     // Raw content is never selected — only headline/summary reach the email.
-    public async Task<IReadOnlyList<LawChangeRow>> UnsentLawChangesAsync(string subscriberId, string state, bool urgentOnly)
+    public async Task<IReadOnlyList<LawChangeRow>> UnsentLawChangesAsync(string subscriberId, string? state, bool urgentOnly)
     {
+        // A subscriber who hasn't picked a domicile yet gets nothing, not just the federal items.
+        if (string.IsNullOrEmpty(state)) return [];
+
         using var conn = db.Open();
         var severityFilter = urgentOnly ? "AND severity = 'urgent'" : "";
         var rows = await conn.QueryAsync<LawChangeRow>($"""
