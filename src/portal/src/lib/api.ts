@@ -39,7 +39,7 @@ async function request<T>(
 export interface Subscriber {
   id: string
   email: string
-  state: string
+  state: string | null
   insuranceRenewalMonth: number | null
   registrationRenewalMonth: number | null
   licenseRenewalMonth: number | null
@@ -87,6 +87,12 @@ export const api = {
     request<Subscriber>(`/api/subscribers/${id}/profile`, {
       method: 'PUT',
       body: JSON.stringify(body),
+    }),
+
+  setState: (id: string, state: string) =>
+    request<Subscriber>(`/api/subscribers/${id}/state`, {
+      method: 'PUT',
+      body: JSON.stringify({ state }),
     }),
 
   getFeed: (id: string, limit = 20, offset = 0) =>

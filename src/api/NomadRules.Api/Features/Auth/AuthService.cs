@@ -47,8 +47,8 @@ public class AuthService(Db db)
 
             var id = Guid.NewGuid().ToString();
             await conn.ExecuteAsync("""
-                INSERT INTO subscribers (id, email, state, tier, entra_oid, created_at, updated_at)
-                VALUES (@id, @email, 'TX', 'free', @entraOid, now()::text, now()::text)
+                INSERT INTO subscribers (id, email, tier, entra_oid, created_at, updated_at)
+                VALUES (@id, @email, 'free', @entraOid, now()::text, now()::text)
                 """, new { id, email, entraOid });
 
             return (await conn.QuerySingleAsync<Subscribers.Subscriber>(

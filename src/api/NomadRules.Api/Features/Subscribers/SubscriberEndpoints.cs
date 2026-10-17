@@ -12,6 +12,7 @@ public static class SubscriberEndpoints
         group.MapPost("/", Register).AllowAnonymous();
         group.MapGet("/{id}/profile", GetProfile).RequireAuthorization("SubscriberTenant");
         group.MapPut("/{id}/profile", UpdateProfile).RequireAuthorization("SubscriberTenant");
+        group.MapPut("/{id}/state", SetState).RequireAuthorization("SubscriberTenant");
         group.MapGet("/{id}/feed", GetFeed).RequireAuthorization("SubscriberTenant");
     }
 
@@ -22,8 +23,8 @@ public static class SubscriberEndpoints
         if (string.IsNullOrWhiteSpace(req.Email) || !req.Email.Contains('@'))
             return Results.BadRequest(new { error = "invalid_email", message = "Valid email is required" });
 
-        if (string.IsNullOrWhiteSpace(req.State))
-            return Results.BadRequest(new { error = "invalid_state", message = "State is required" });
+        if (!SupportedStates.IsSupported(req.State))
+            return Results.BadRequest(InvalidState());
 
         if (RenewalValidation.Validate(req) is { } err)
             return Results.BadRequest(new { error = "invalid_renewal", message = err });
@@ -60,6 +61,27 @@ public static class SubscriberEndpoints
         var updated = await svc.UpdateAsync(id, req);
         return Results.Ok(updated);
     }
+
+    private static async Task<IResult> SetState(
+        string id,
+        [FromBody] SetStateRequest req,
+        ClaimsPrincipal user,
+        SubscriberService svc)
+    {
+        if (!await IsAuthorizedAsync(user, id, svc)) return Results.Forbid();
+
+        if (!SupportedStates.IsSupported(req.State))
+            return Results.BadRequest(InvalidState());
+
+        if (await svc.GetByIdAsync(id) is null) return Results.NotFound();
+        return Results.Ok(await svc.SetStateAsync(id, req.State.ToUpperInvariant()));
+    }
+
+    private static object InvalidState() => new
+    {
+        error = "invalid_state",
+        message = $"State must be one of: {string.Join(", ", SupportedStates.Codes)}",
+    };
 
     private static async Task<IResult> GetFeed(
         string id,

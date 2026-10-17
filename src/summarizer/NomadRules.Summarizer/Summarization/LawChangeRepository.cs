@@ -13,7 +13,7 @@ public class LawChangeRepository(Db db)
     {
         using var conn = db.Open();
         return await conn.QueryFirstOrDefaultAsync<LawChangeRow>("""
-            SELECT id AS Id, raw_content AS RawContent, retry_count AS RetryCount
+            SELECT id AS Id, raw_content AS RawContent, retry_count AS RetryCount, state AS State
             FROM law_changes
             WHERE raw_content IS NOT NULL
               AND processed_at IS NULL

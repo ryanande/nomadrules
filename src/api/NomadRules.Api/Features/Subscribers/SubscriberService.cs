@@ -87,6 +87,15 @@ public class SubscriberService(Db db)
         return (await GetByIdAsync(id))!;
     }
 
+    public async Task<Subscriber> SetStateAsync(string id, string state)
+    {
+        using var conn = db.Open();
+        await conn.ExecuteAsync(
+            "UPDATE subscribers SET state = @state, updated_at = now()::text WHERE id = @id",
+            new { state, id });
+        return (await GetByIdAsync(id))!;
+    }
+
     public async Task SetStripeInfoAsync(string email, string customerId, string subscriptionId, string tier)
     {
         using var conn = db.Open();

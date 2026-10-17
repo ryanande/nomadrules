@@ -24,11 +24,13 @@ public record UpdateProfileRequest(
     int? TaxDueDay = null
 );
 
+public record SetStateRequest(string State);
+
 public class Subscriber
 {
     public string Id { get; set; } = default!;
     public string Email { get; set; } = default!;
-    public string State { get; set; } = default!;
+    public string? State { get; set; }
     public int? InsuranceRenewalMonth { get; set; }
     public int? RegistrationRenewalMonth { get; set; }
     public int? LicenseRenewalMonth { get; set; }

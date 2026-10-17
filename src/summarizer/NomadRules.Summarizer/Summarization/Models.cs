@@ -19,7 +19,19 @@ public class ClaudeOptions
 
 // A row claimed for summarization. RetryCount is int to match Postgres INTEGER (Dapper's record/constructor
 // materialization requires an exact type match — unlike class property assignment, which tolerates numeric coercion).
-public record LawChangeRow(string Id, string RawContent, int RetryCount);
+public record LawChangeRow(string Id, string RawContent, int RetryCount, string State);
+
+// Prompt prose reads better with the full state name than the postal code; an unmapped code falls back to itself.
+public static class StateNames
+{
+    private static readonly Dictionary<string, string> Names = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["TX"] = "Texas",
+        ["SD"] = "South Dakota",
+    };
+
+    public static string FullName(string code) => Names.TryGetValue(code, out var name) ? name : code;
+}
 
 // Parsed Claude output plus usage/cost for one summary.
 public record SummaryResult(

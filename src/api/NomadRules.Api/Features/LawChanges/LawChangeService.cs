@@ -18,7 +18,9 @@ public class LawChange
 
 public class LawChangeService(Db db)
 {
-    public async Task<(List<LawChange> items, int total)> GetFeedAsync(string state, int limit, int offset)
+    // A null state (subscriber not yet onboarded) is intentionally inert: `state = NULL` matches no rows,
+    // and the portal gates the feed behind onboarding.
+    public async Task<(List<LawChange> items, int total)> GetFeedAsync(string? state, int limit, int offset)
     {
         using var conn = db.Open();
 
