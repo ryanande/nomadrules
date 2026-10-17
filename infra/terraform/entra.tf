@@ -15,6 +15,10 @@ resource "azuread_application" "subscriber_portal" {
   provider     = azuread.ciam
   display_name = "NomadRules Portal (subscribers)"
 
+  api {
+    requested_access_token_version = 2 # CIAM rejects v1 (null) access tokens
+  }
+
   web {
     redirect_uris = var.portal_redirect_uris
   }
