@@ -8,6 +8,7 @@
     <Project Path="src/db-migrations/NomadRules.DbMigrations/NomadRules.DbMigrations.csproj" />
   </Folder>
   <Folder Name="/src/summarizer/">
+    <Project Path="src/summarizer/NomadRules.Summarizer.Tests/NomadRules.Summarizer.Tests.csproj" />
     <Project Path="src/summarizer/NomadRules.Summarizer/NomadRules.Summarizer.csproj" />
   </Folder>
 </Solution>
