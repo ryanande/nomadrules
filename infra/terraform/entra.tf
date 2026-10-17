@@ -5,6 +5,10 @@
 provider "azuread" {
   alias     = "ciam"
   tenant_id = var.ciam_tenant_id
+  # The workforce app registration is single-tenant, so the CIAM tenant has its own
+  # app (Terraform-NomadRules-CIAM) with its own GitHub OIDC federated credentials.
+  client_id = var.ciam_client_id
+  use_oidc  = true
 }
 
 resource "azuread_application" "subscriber_portal" {

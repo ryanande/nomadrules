@@ -58,7 +58,7 @@ resource "azurerm_key_vault" "main" {
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
 
-  enable_rbac_authorization = true # already RBAC-mode per azure-entra-auth-iac
+  rbac_authorization_enabled = true # already RBAC-mode per azure-entra-auth-iac
 
   # AKS pods reach the vault through the private endpoint in network.tf. The CI runner has
   # no VNet path, so the public endpoint stays on but is closed to everything except the

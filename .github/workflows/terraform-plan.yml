@@ -26,6 +26,7 @@ jobs:
       TF_VAR_aks_cluster_name: ${{ vars.AKS_CLUSTER_NAME }}
       TF_VAR_acr_name: ${{ vars.ACR_NAME }}
       TF_VAR_ciam_tenant_id: ${{ vars.TF_VAR_CIAM_TENANT_ID }}
+      TF_VAR_ciam_client_id: ${{ secrets.AZURE_CIAM_CLIENT_ID }}
       TF_VAR_ciam_tenant_domain: ${{ vars.CIAM_TENANT_DOMAIN }}
       TF_VAR_team_role_assignments: ${{ vars.TEAM_ROLE_ASSIGNMENTS }}
       TF_VAR_break_glass_object_id: ${{ vars.BREAK_GLASS_OBJECT_ID }}

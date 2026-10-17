@@ -28,6 +28,11 @@ variable "ciam_tenant_id" {
   type        = string
 }
 
+variable "ciam_client_id" {
+  description = "Client ID of the Terraform app registration inside the CIAM tenant (used with GitHub OIDC)"
+  type        = string
+}
+
 variable "ciam_tenant_domain" {
   description = "Domain of the Entra External ID (CIAM) tenant, e.g. nomadrules.onmicrosoft.com"
   type        = string
