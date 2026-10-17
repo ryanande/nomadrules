@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useIsAuthenticated, useMsal } from '@azure/msal-react'
 import { Button } from '@/components/ui/button'
-import { api, ApiError } from '@/lib/api'
+import { api, ApiError, type Subscriber } from '@/lib/api'
 import { Login } from '@/pages/Login'
 import { Profile } from '@/pages/Profile'
 import { Feed } from '@/pages/Feed'
+import { SelectState } from '@/pages/SelectState'
 
 type View = 'profile' | 'feed'
 
 function App() {
   const isAuthenticated = useIsAuthenticated()
   const { instance } = useMsal()
-  const [subscriberId, setSubscriberId] = useState<string | null>(null)
+  const [subscriber, setSubscriber] = useState<Subscriber | null>(null)
   const [meError, setMeError] = useState<string | null>(null)
   const [view, setView] = useState<View>('profile')
 
@@ -21,7 +22,7 @@ function App() {
     // the matching subscribers row and hands back its internal id.
     api
       .me()
-      .then((sub) => setSubscriberId(sub.id))
+      .then(setSubscriber)
       .catch((err) =>
         setMeError(err instanceof ApiError ? err.message : 'Something went wrong signing you in.'),
       )
@@ -29,7 +30,7 @@ function App() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setSubscriberId(null)
+      setSubscriber(null)
       setMeError(null)
       return
     }
@@ -57,7 +58,12 @@ function App() {
     )
   }
 
-  if (!subscriberId) return <p className="mt-16 text-center text-sm">Signing you in…</p>
+  if (!subscriber) return <p className="mt-16 text-center text-sm">Signing you in…</p>
+
+  // A freshly provisioned subscriber has no domicile yet; ask once before showing Profile/Feed.
+  if (subscriber.state === null) return <SelectState subscriber={subscriber} onSaved={setSubscriber} />
+
+  const subscriberId = subscriber.id
 
   return (
     <div className="mx-auto max-w-xl">
