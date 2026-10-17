@@ -15,6 +15,21 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_resource_group_name: ${{ vars.AZURE_RESOURCE_GROUP }}
+      TF_VAR_key_vault_name: ${{ vars.KEY_VAULT_NAME }}
+      TF_VAR_aks_cluster_name: ${{ vars.AKS_CLUSTER_NAME }}
+      TF_VAR_acr_name: ${{ vars.ACR_NAME }}
+      TF_VAR_ciam_tenant_id: ${{ vars.TF_VAR_CIAM_TENANT_ID }}
+      TF_VAR_ciam_client_id: ${{ secrets.AZURE_CIAM_CLIENT_ID }}
+      TF_VAR_ciam_tenant_domain: ${{ vars.CIAM_TENANT_DOMAIN }}
+      TF_VAR_team_role_assignments: ${{ vars.TEAM_ROLE_ASSIGNMENTS }}
+      TF_VAR_break_glass_object_id: ${{ vars.BREAK_GLASS_OBJECT_ID }}
     defaults:
       run:
         working-directory: infra/terraform
@@ -29,6 +44,10 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
+      # The vault firewall admits only this runner's IP (see resources.tf).
+      - name: Allow runner IP through Key Vault firewall
+        run: echo "TF_VAR_key_vault_allowed_ips=[\"$(curl -fsS https://api.ipify.org)\"]" >> "$GITHUB_ENV"
+
       # backend.ci.hcl is gitignored (state-backend location isn't secret, but
       # isn't committed either — see README.md); materialize it from repo
       # Variables (Settings > Variables, not Secrets) instead.
@@ -38,6 +57,7 @@ jobs:
           resource_group_name  = "${{ vars.TF_BACKEND_RESOURCE_GROUP }}"
           storage_account_name = "${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}"
           container_name       = "tfstate"
+          use_azuread_auth     = true
           key                  = "nomadrules.tfstate"
           EOF
 

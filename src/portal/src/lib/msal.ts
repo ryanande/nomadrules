@@ -5,7 +5,7 @@ export const msalInstance = new PublicClientApplication({
   auth: {
     clientId: import.meta.env.VITE_ENTRA_CLIENT_ID,
     authority: import.meta.env.VITE_ENTRA_AUTHORITY,
-    redirectUri: window.location.origin,
+    redirectUri: `${window.location.origin}/`,
   },
   cache: {
     cacheLocation: 'sessionStorage',

@@ -51,6 +51,8 @@ resource "azurerm_key_vault_secret" "externally_sourced" {
   key_vault_id = azurerm_key_vault.main.id
   value        = "REPLACE_ME"
 
+  depends_on = [time_sleep.key_vault_rbac_propagation]
+
   lifecycle {
     ignore_changes = [value]
   }

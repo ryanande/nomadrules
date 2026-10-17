@@ -4,27 +4,32 @@ variable "subscription_id" {
 }
 
 variable "resource_group_name" {
-  description = "Resource group containing the Key Vault, AKS cluster, ACR, and DB"
+  description = "Pre-created resource group that holds the Key Vault, AKS cluster, ACR, and DB"
   type        = string
 }
 
 variable "key_vault_name" {
-  description = "Name of the existing Key Vault to bring under RBAC management"
+  description = "Globally unique name for the Key Vault"
   type        = string
 }
 
 variable "aks_cluster_name" {
-  description = "Name of the existing AKS cluster"
+  description = "Name for the AKS cluster"
   type        = string
 }
 
 variable "acr_name" {
-  description = "Name of the existing Azure Container Registry"
+  description = "Globally unique name for the Azure Container Registry"
   type        = string
 }
 
 variable "ciam_tenant_id" {
   description = "Tenant ID (GUID) of the separate Entra External ID (CIAM) tenant — distinct from the workforce tenant the default provider targets"
+  type        = string
+}
+
+variable "ciam_client_id" {
+  description = "Client ID of the Terraform app registration inside the CIAM tenant (used with GitHub OIDC)"
   type        = string
 }
 
@@ -36,7 +41,7 @@ variable "ciam_tenant_domain" {
 variable "portal_redirect_uris" {
   description = "Redirect URIs the Portal uses after Entra External ID sign-in (dev + prod)"
   type        = list(string)
-  default     = ["http://localhost:5173", "https://portal.nomadrules.com"]
+  default     = ["http://localhost:5173/", "https://portal.nomadrules.com/"]
 }
 
 variable "team_role_assignments" {
@@ -86,23 +91,23 @@ variable "app_namespace" {
   default     = "nomadrules-services"
 }
 
-# --- AKS/Key Vault reconciliation (resources.tf) ---
-# No defaults on purpose: these MUST be populated from `az aks show` / `az keyvault
-# show` output before the first `terraform plan` against the imported resources is
-# trustworthy. See README "Reconciling AKS/Key Vault/ACR before the first apply".
-variable "aks_reconcile" {
-  description = "Live AKS/Key Vault attributes an operator must confirm before importing (see README.md) — no defaults, must be supplied via terraform.tfvars"
-  type = object({
-    dns_prefix          = string
-    kubernetes_version  = string
-    sku_tier            = string
-    node_pool_name      = string
-    node_vm_size        = string
-    node_count          = number
-    network_plugin      = string # must be "azure" — see design.md; "kubenet" means the cluster needs recreating, not importing
-    key_vault_tenant_id = string
-    key_vault_sku       = string
-  })
+variable "key_vault_allowed_ips" {
+  description = "Public IPs allowed through the Key Vault firewall (the CI runner's IP, injected per run)"
+  type        = list(string)
+  default     = []
+}
+
+# --- AKS node pool (resources.tf) ---
+variable "aks_node_vm_size" {
+  description = "VM size for the AKS system node pool (the subscription's DSv5 quota is 0; B-series has quota)"
+  type        = string
+  default     = "Standard_B2ms"
+}
+
+variable "aks_node_count" {
+  description = "Node count for the AKS system node pool"
+  type        = number
+  default     = 2
 }
 
 # --- Postgres (postgres.tf) ---

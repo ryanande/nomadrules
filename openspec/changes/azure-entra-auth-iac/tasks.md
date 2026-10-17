@@ -31,7 +31,7 @@
 ## 5. Database migration
 
 - [x] 5.1 Add migration: nullable `entra_oid` column on `subscribers`, unique index
-- [ ] 5.2 Add (separate, later) migration: drop `magic_links` table — intentionally held until portal cutover is confirmed live (see task 8)
+- [x] 5.2 Add (separate, later) migration: drop `magic_links` table — intentionally held until portal cutover is confirmed live (see task 8) — done early: dropped in the 0001 schema collapse (no deployed DB existed)
 
 ## 6. API changes (`src/api/NomadRules.Api`)
 
