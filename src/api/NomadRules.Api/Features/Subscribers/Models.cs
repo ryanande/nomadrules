@@ -24,6 +24,8 @@ public record UpdateProfileRequest(
     int? TaxDueDay = null
 );
 
+public record SetStateRequest(string State);
+
 public class Subscriber
 {
     public string Id { get; set; } = default!;
