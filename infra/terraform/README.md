@@ -2,27 +2,20 @@
 
 Source of truth for Entra app registrations, Entra app roles, Azure RBAC role assignments, the platform VNet, and the AKS/Key Vault/ACR/Postgres resources those roles and workloads depend on. Helm (`infra/helm/`) still owns K8s workload deployment; this root owns identity/IAM, networking, and cloud resource scaffolding.
 
-## Reconciling AKS/Key Vault/ACR before the first apply
+## What Terraform creates
 
-`resources.tf` brings AKS, Key Vault, and ACR under full Terraform management via `import` blocks (previously they were `data` sources only — see git history). This is necessary to declare `oidc_issuer_enabled`/`workload_identity_enabled` on the cluster and `public_network_access_enabled = false` on the vault/registry, none of which a `data` source can express.
+AKS, Key Vault, ACR, the VNet, Postgres, private endpoints, workload identities, RBAC, and the Entra app registrations are all created by `terraform apply`. The only things made by hand are listed under "One-time manual bootstrap" below: the resource group (`data` source here), the state backend, and the CI service principal with its roles.
 
-**None of the resource blocks in `resources.tf` are apply-ready as committed.** The `var.aks_reconcile` object has no defaults on purpose — an operator with real Azure access must:
-
-1. Run `az aks show -g <rg> -n <cluster>`, `az keyvault show -n <vault>`, `az acr show -n <registry>` and populate `var.aks_reconcile` (dns prefix, k8s version, SKU tier, node pool name/size/count, network plugin, Key Vault tenant ID/SKU) in a not-committed `terraform.tfvars` to match the live resources exactly.
-2. **Check `network_plugin` first.** If the live cluster is `kubenet` (not `azure_cni`), it cannot support private endpoints or Workload Identity's pod-to-VNet networking — the cluster must be recreated inside `snet-aks` with Azure CNI rather than imported. See design.md's "Verify the existing AKS cluster's network plugin" decision. Do not proceed with the import path if this is the case.
-3. Run `terraform plan` and confirm it reports **no diff** on the three imported resources before ever running `apply` against them — a diff here means `var.aks_reconcile` doesn't yet match live state, and applying it would attempt to change real infrastructure.
-4. Only once plan is clean should the VNet, Postgres, private endpoints, and per-service Workload Identity resources be applied (they depend on the imported resources but don't themselves require reconciliation — they're new).
-
-This mirrors the same "requires an operator with real Azure access" constraint documented in the original `azure-entra-auth-iac` change; it isn't new risk, just risk that was previously deferred by leaving these three as `data` sources.
+Inputs reach CI as GitHub repo Variables/Secrets mapped to `TF_VAR_*` in `terraform-plan.yml` / `terraform-apply.yml` (`AZURE_RESOURCE_GROUP`, `KEY_VAULT_NAME`, `AKS_CLUSTER_NAME`, `ACR_NAME`, `TF_VAR_CIAM_TENANT_ID`, `CIAM_TENANT_DOMAIN`, `TEAM_ROLE_ASSIGNMENTS`, `BREAK_GLASS_OBJECT_ID`, secret `AZURE_SUBSCRIPTION_ID`). Node pool size defaults to `Standard_B2ms` x2 because the subscription has no DSv5 quota.
 
 ## One-time manual bootstrap (cannot be Terraform'd — chicken-and-egg)
 
 Before the first `terraform init`/`apply`, someone with Application Administrator + Owner must, by hand:
 
 1. Confirm Entra External ID (CIAM) is enabled on the tenant (or create the CIAM tenant).
-2. Create the Terraform service principal (`Terraform-NomadRules`), grant it `Contributor` + `User Access Administrator` on the target subscription and `Application Administrator` on both the workforce and CIAM tenants.
+2. Create the resource group (`rg-nomadrules`) and the Terraform service principal (`Terraform-NomadRules`), grant it `Contributor` + `User Access Administrator` on the target subscription and `Application Administrator` on both the workforce and CIAM tenants.
 3. Add two GitHub OIDC federated credentials on that service principal — one for `push`-to-`main` (`repo:<owner>/<repo>:ref:refs/heads/main`, used by `terraform-apply.yml`) and one for `pull_request` (`repo:<owner>/<repo>:pull_request`, used by `terraform-plan.yml`) — so CI never stores a client secret. This is the **same identity** the deploy workflows (`api.yml`, `crawler.yml`, etc.) use, via the `AZURE_CLIENT_ID` secret — see `ci-deploy.tf`.
-4. Provision the remote state backend by hand: an Azure Storage account + container with versioning and locking enabled. Set the resulting names as GitHub repo **Variables** (Settings > Variables, not Secrets — they aren't sensitive): `TF_BACKEND_RESOURCE_GROUP`, `TF_BACKEND_STORAGE_ACCOUNT`.
+4. Provision the remote state backend by hand: an Azure Storage account + container with versioning enabled; grant the service principal `Storage Blob Data Contributor` on it (the backend uses Entra auth). Set the resulting names as GitHub repo **Variables** (Settings > Variables, not Secrets — they aren't sensitive): `TF_BACKEND_RESOURCE_GROUP`, `TF_BACKEND_STORAGE_ACCOUNT`.
 5. Create a `terraform-apply` GitHub Environment (Settings > Environments) with required reviewers, so `terraform-apply.yml`'s auto-apply-on-merge always waits for a human checkpoint before touching real infrastructure.
 
 Backend connection details (`storage_account_name`, `container_name`, `resource_group_name`) are passed via `terraform init -backend-config=...`. In CI, `terraform-plan.yml`/`terraform-apply.yml` write `backend.ci.hcl` from the `TF_BACKEND_*` repo Variables above before running `terraform init` — the file itself is gitignored (see `backend.ci.hcl.example` for the format) since it's regenerated every run, not committed. Locally, copy `backend.ci.hcl.example` to `backend.ci.hcl` and fill in the real values yourself.
