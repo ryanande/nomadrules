@@ -48,4 +48,6 @@ resource "azurerm_key_vault_secret" "postgres_connection_string" {
   name         = "postgres-connection-string"
   key_vault_id = azurerm_key_vault.main.id
   value        = "Host=${azurerm_postgresql_flexible_server.main.fqdn};Database=${azurerm_postgresql_flexible_server_database.main.name};Username=${azurerm_postgresql_flexible_server.main.administrator_login};Password=${random_password.postgres_admin.result};SSL Mode=Require"
+
+  depends_on = [time_sleep.key_vault_rbac_propagation]
 }

@@ -6,7 +6,7 @@ Source of truth for Entra app registrations, Entra app roles, Azure RBAC role as
 
 AKS, Key Vault, ACR, the VNet, Postgres, private endpoints, workload identities, RBAC, and the Entra app registrations are all created by `terraform apply`. The only things made by hand are listed under "One-time manual bootstrap" below: the resource group (`data` source here), the state backend, and the CI service principal with its roles.
 
-Inputs reach CI as GitHub repo Variables/Secrets mapped to `TF_VAR_*` in `terraform-plan.yml` / `terraform-apply.yml` (`AZURE_RESOURCE_GROUP`, `KEY_VAULT_NAME`, `AKS_CLUSTER_NAME`, `ACR_NAME`, `TF_VAR_CIAM_TENANT_ID`, `CIAM_TENANT_DOMAIN`, `TEAM_ROLE_ASSIGNMENTS`, `BREAK_GLASS_OBJECT_ID`, secret `AZURE_SUBSCRIPTION_ID`). Node pool size defaults to `Standard_B2ms` x2 because the subscription has no DSv5 quota.
+Inputs reach CI as GitHub repo Variables/Secrets mapped to `TF_VAR_*` in `terraform-plan.yml` / `terraform-apply.yml` (`AZURE_RESOURCE_GROUP`, `KEY_VAULT_NAME`, `AKS_CLUSTER_NAME`, `ACR_NAME`, `TF_VAR_CIAM_TENANT_ID`, `CIAM_TENANT_DOMAIN`, `TEAM_ROLE_ASSIGNMENTS`, `BREAK_GLASS_OBJECT_ID`, secret `AZURE_SUBSCRIPTION_ID`). Key Vault has purge protection on and a firewall that admits only the CI runner's IP (injected per run as `TF_VAR_key_vault_allowed_ips`) plus the AKS private endpoint; Terraform grants itself `Key Vault Secrets Officer` to write secret shells. Node pool size defaults to `Standard_B2ms` x2 because the subscription has no DSv5 quota.
 
 ## One-time manual bootstrap (cannot be Terraform'd — chicken-and-egg)
 

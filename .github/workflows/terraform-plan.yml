@@ -43,6 +43,10 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
+      # The vault firewall admits only this runner's IP (see resources.tf).
+      - name: Allow runner IP through Key Vault firewall
+        run: echo "TF_VAR_key_vault_allowed_ips=[\"$(curl -fsS https://api.ipify.org)\"]" >> "$GITHUB_ENV"
+
       # backend.ci.hcl is gitignored (state-backend location isn't secret, but
       # isn't committed either — see README.md); materialize it from repo
       # Variables (Settings > Variables, not Secrets) instead.

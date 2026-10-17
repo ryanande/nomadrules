@@ -86,6 +86,12 @@ variable "app_namespace" {
   default     = "nomadrules-services"
 }
 
+variable "key_vault_allowed_ips" {
+  description = "Public IPs allowed through the Key Vault firewall (the CI runner's IP, injected per run)"
+  type        = list(string)
+  default     = []
+}
+
 # --- AKS node pool (resources.tf) ---
 variable "aks_node_vm_size" {
   description = "VM size for the AKS system node pool (the subscription's DSv5 quota is 0; B-series has quota)"

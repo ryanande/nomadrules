@@ -60,12 +60,17 @@ resource "azurerm_key_vault" "main" {
 
   enable_rbac_authorization = true # already RBAC-mode per azure-entra-auth-iac
 
-  # No public data-plane path — reachable only via the private endpoint in network.tf.
-  public_network_access_enabled = false
+  # AKS pods reach the vault through the private endpoint in network.tf. The CI runner has
+  # no VNet path, so the public endpoint stays on but is closed to everything except the
+  # runner's own IP (var.key_vault_allowed_ips, set per run by the workflows).
+  public_network_access_enabled = true
+  purge_protection_enabled      = true
+  soft_delete_retention_days    = 90
 
   network_acls {
     default_action = "Deny"
     bypass         = "AzureServices"
+    ip_rules       = var.key_vault_allowed_ips
   }
 
   lifecycle {
@@ -86,4 +91,17 @@ resource "azurerm_container_registry" "main" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# The vault is RBAC-mode, so writing secrets needs a data-plane role (Contributor and
+# User Access Administrator are control-plane only). RBAC takes a while to propagate.
+resource "azurerm_role_assignment" "terraform_key_vault_secrets_officer" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
+resource "time_sleep" "key_vault_rbac_propagation" {
+  create_duration = "60s"
+  depends_on      = [azurerm_role_assignment.terraform_key_vault_secrets_officer]
 }
