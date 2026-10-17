@@ -33,9 +33,10 @@ public static class Templates
     public static (string Subject, string Body) UrgentAlert(LawChangeRow change)
     {
         var subject = $"Urgent: {change.Headline}";
+        var scope = change.State == "US" ? "applies nationwide" : $"affects your state ({change.State})";
         var body =
             $"""
-            An urgent law change affects your state ({change.State}):
+            An urgent law change {scope}:
 
             {change.Headline}
 

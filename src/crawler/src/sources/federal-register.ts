@@ -15,7 +15,7 @@ export class FederalRegisterScraper implements ISourceScraper {
   readonly sourceId = 'federal-register-health-insurance';
   readonly schedule = '0 4 * * 1';
   readonly category: LawCategory = 'insurance';
-  readonly state = undefined;
+  readonly state = 'US';
 
   private readonly apiBase = 'https://www.federalregister.gov/api/v1/documents.json';
   private readonly agencies = [
