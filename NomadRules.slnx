@@ -5,6 +5,7 @@
     <Project Path="src/api/NomadRules.Api/NomadRules.Api.csproj" />
   </Folder>
   <Folder Name="/src/db-migrations/">
+    <Project Path="src/db-migrations/NomadRules.DbMigrations.Tests/NomadRules.DbMigrations.Tests.csproj" />
     <Project Path="src/db-migrations/NomadRules.DbMigrations/NomadRules.DbMigrations.csproj" />
   </Folder>
   <Folder Name="/src/email-service/">

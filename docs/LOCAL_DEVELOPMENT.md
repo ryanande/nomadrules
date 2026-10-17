@@ -36,7 +36,7 @@ Host=localhost;Port=5432;Database=nomadrules_dev;Username=nomadrules;Password=no
 
 ## 2. Apply migrations
 
-The DbUp runner applies `Scripts/V*.sql` (Postgres dialect) and exits. Run it before any service:
+The DbUp runner applies `Scripts/*.sql` (`0001_initial_schema`, `0002_lookup_data`, then any later numbered scripts) (Postgres dialect) and exits. Run it before any service:
 
 ```bash
 cd src/db-migrations/NomadRules.DbMigrations
@@ -45,6 +45,10 @@ POSTGRES_CONNECTION_STRING="Host=localhost;Port=5432;Database=nomadrules_dev;Use
 ```
 
 Re-running is idempotent (already-applied scripts are skipped).
+
+> The original `V001`-`V007` scripts were collapsed into `0001`/`0002` before anything was deployed. DbUp keys
+> on script name, so a local database migrated with the old scripts must be recreated (`DROP DATABASE
+> nomadrules_dev` and create it again) before running the runner.
 
 ## 3. Run the services
 
@@ -138,8 +142,5 @@ Without it, the API boots with dummy values and only the anonymous register endp
 
 - **Secrets are env vars locally, Key Vault in AKS.** Never commit real keys; the compose file and
   appsettings carry only local placeholders.
-- **Duplicate `V003` migration scripts** (`V003__entra_oid.sql` + `V003__law_change_dedup.sql`) —
-  landed from two parallel changes. DbUp keys on the full script name so both apply, but the shared
-  version number is a smell worth renumbering.
 - Messaging is Azure Service Bus (prod) / local-file queue (dev) — **not** RabbitMQ, despite older
   references. There is no local broker to run.
