@@ -51,9 +51,6 @@ jobs:
     needs: build-push
     runs-on: ubuntu-latest
     environment: deploy
-    concurrency:
-      group: helm-deploy
-      cancel-in-progress: false
     permissions:
       id-token: write
       contents: read
@@ -74,7 +71,13 @@ jobs:
       - uses: azure/setup-helm@v4
 
       - run: |
-          helm upgrade --install nomadrules infra/helm \
-            --namespace nomadrules-services --create-namespace \
-            --reuse-values \
-            --set crawler.image.tag=${{ github.sha }}
+          # Image workflows deploy in parallel; Helm refuses concurrent operations on a release, so retry.
+          for attempt in 1 2 3 4 5 6; do
+            helm upgrade --install nomadrules infra/helm \
+              --namespace nomadrules-services --create-namespace \
+              --reuse-values \
+              -f infra/helm/values-azure.yaml \
+              --set crawler.image.tag=${{ github.sha }} && exit 0
+            echo "helm busy or failed (attempt $attempt); retrying"; sleep 60
+          done
+          exit 1

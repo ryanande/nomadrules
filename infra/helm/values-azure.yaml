@@ -1,0 +1,21 @@
+# Non-secret identifiers for the Azure deployment (outputs of infra/terraform:
+# workload_identity_client_ids and the workforce tenant). Layered over values.yaml by the
+# deploy jobs via `-f`. Regenerate from `terraform output` if the identities are recreated.
+azure:
+  keyVaultName: kv-nomadrules
+  tenantId: bf015715-87b5-44ad-9508-5d50e22881ee
+
+workloadIdentity:
+  services:
+    api:
+      clientId: eba26207-7d99-4cfc-b743-42022299e4d9
+    ingest:
+      clientId: 0afbf398-fd12-442b-8230-22db27b3f72c
+    summarizer:
+      clientId: 12af8c8c-d102-41de-b3eb-efefaa658023
+    email-delivery:
+      clientId: 80ddee54-cb34-4894-924a-fa7196b9faa1
+    db-migrations:
+      clientId: 2cc1f209-d518-4698-8136-c7e4d78575e4
+    crawler:
+      clientId: c8522584-5d65-40bd-8649-ab1713643123
