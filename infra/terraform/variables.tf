@@ -41,7 +41,7 @@ variable "ciam_tenant_domain" {
 variable "portal_redirect_uris" {
   description = "Redirect URIs the Portal uses after Entra External ID sign-in (dev + prod)"
   type        = list(string)
-  default     = ["http://localhost:5173", "https://portal.nomadrules.com"]
+  default     = ["http://localhost:5173/", "https://portal.nomadrules.com/"]
 }
 
 variable "team_role_assignments" {
