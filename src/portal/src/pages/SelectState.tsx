@@ -3,12 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { api, ApiError, type Subscriber } from '@/lib/api'
-
-// Keep in sync with the API's SupportedStates allow-list.
-const STATES = [
-  { code: 'TX', name: 'Texas' },
-  { code: 'SD', name: 'South Dakota' },
-]
+import { STATES } from '@/lib/states'
 
 const inputClass =
   'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs disabled:opacity-50'
