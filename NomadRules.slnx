@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/api/">
+    <Project Path="src/api/NomadRules.Api.Tests/NomadRules.Api.Tests.csproj" />
     <Project Path="src/api/NomadRules.Api/NomadRules.Api.csproj" />
   </Folder>
   <Folder Name="/src/db-migrations/">
