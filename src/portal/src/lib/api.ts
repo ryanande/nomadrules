@@ -68,6 +68,7 @@ export interface LawChangeFeedItem {
   headline: string
   summary: string
   severity: string
+  state: string
   detectedAt: string
 }
 

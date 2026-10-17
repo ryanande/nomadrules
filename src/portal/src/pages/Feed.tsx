@@ -35,7 +35,7 @@ export function Feed({ subscriberId }: { subscriberId: string }) {
           <CardHeader>
             <CardTitle className="text-base">{item.headline}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              {item.severity} · {new Date(item.detectedAt).toLocaleDateString()}
+              {item.state === 'US' ? 'Federal · ' : ''}{item.severity} · {new Date(item.detectedAt).toLocaleDateString()}
             </p>
           </CardHeader>
           <CardContent>
