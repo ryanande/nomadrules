@@ -101,7 +101,7 @@ variable "key_vault_allowed_ips" {
 variable "aks_node_vm_size" {
   description = "VM size for the AKS system node pool (the subscription's DSv5 quota is 0; B-series has quota)"
   type        = string
-  default     = "Standard_B2ms"
+  default     = "Standard_B2s_v2"
 }
 
 variable "aks_node_count" {

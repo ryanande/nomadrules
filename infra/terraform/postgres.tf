@@ -13,7 +13,8 @@ resource "azurerm_postgresql_flexible_server" "main" {
   resource_group_name = data.azurerm_resource_group.main.name
   location            = data.azurerm_resource_group.main.location
 
-  delegated_subnet_id = azurerm_subnet.postgres.id
+  delegated_subnet_id           = azurerm_subnet.postgres.id
+  public_network_access_enabled = false
   private_dns_zone_id = azurerm_private_dns_zone.postgres.id
 
   # Burstable B1ms: cheapest tier that fits this workload (pre-100 subscribers,
