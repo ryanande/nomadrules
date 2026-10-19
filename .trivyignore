@@ -1,3 +1,9 @@
 # CVEs allow-listed here have no fixed version available upstream — reviewed quarterly,
 # not a blanket bypass (see design.md risk: "Trivy scan gate could block a merge...").
 # Format: one CVE ID per line, optionally with an expiry comment.
+
+# gstreamer1.0-plugins-bad (Playwright base image, Ubuntu 22.04): no fixed version; the
+# crawler launches Chromium only and never loads GStreamer (WebKit-only dependency).
+# Only the crawler image ships it; if another image reports it, investigate rather than ignore.
+# Expires automatically so it is re-reviewed (quarterly).
+CVE-2025-3887 exp:2027-01-19
