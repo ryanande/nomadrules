@@ -126,8 +126,13 @@ jobs:
           images="$(.github/scripts/resolve-images.sh)"
           mapfile -t tags < <(echo "$images" | jq -r '.[] | select(.exists) | "--set=\(.key).image.tag=\(.sha)"')
           echo "$images" | jq -r '.[] | select(.exists | not) | "not deployed (no image): \(.name)"'
+          # A rollout must never run ahead of its schema: if the migrations image is missing, stop.
+          if [ "$(echo "$images" | jq -r '.[] | select(.name == "db-migrations") | .exists')" != "true" ]; then
+            echo "::error::db-migrations image is missing (build failed?); not deploying services against an un-migrated schema"
+            exit 1
+          fi
           helm upgrade --install nomadrules infra/helm \
             --namespace nomadrules-services --create-namespace \
-            --reuse-values \
+            --reset-then-reuse-values \
             -f infra/helm/values-azure.yaml \
             "${tags[@]}"

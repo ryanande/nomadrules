@@ -6,7 +6,8 @@
 set -euo pipefail
 
 owner="${GITHUB_REPOSITORY_OWNER,,}"
-workflow=".github/workflows/images.yml"
+# Changing the workflow or this script (which defines contexts and image names) rebuilds everything.
+inputs=(".github/workflows/images.yml" ".github/scripts/resolve-images.sh")
 
 # name | source path | docker context | helm values key | image name
 services=(
@@ -21,9 +22,18 @@ services=(
 
 for entry in "${services[@]}"; do
   IFS='|' read -r name path context key image <<<"$entry"
-  sha="$(git log -1 --format=%H -- "$path" "$workflow")"
+  sha="$(git log -1 --format=%H -- "$path" "${inputs[@]}")"
   ref="ghcr.io/${owner}/${image}"
-  if docker manifest inspect "${ref}:${sha}" >/dev/null 2>&1; then exists=true; else exists=false; fi
+  # Only a definite "not found" means missing; auth errors, outages and rate limits must fail the
+  # script rather than silently skip a deploy.
+  if out="$(docker manifest inspect "${ref}:${sha}" 2>&1)"; then
+    exists=true
+  elif grep -qiE 'no such manifest|manifest unknown|not found|404' <<<"$out"; then
+    exists=false
+  else
+    echo "cannot check ${ref}:${sha}: $out" >&2
+    exit 1
+  fi
   jq -cn --arg name "$name" --arg context "$context" --arg key "$key" \
     --arg image "$ref" --arg sha "$sha" --argjson exists "$exists" \
     '{name: $name, context: $context, key: $key, image: $image, sha: $sha, exists: $exists}'
