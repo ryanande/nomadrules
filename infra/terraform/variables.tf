@@ -122,3 +122,27 @@ variable "postgres_storage_mb" {
   type        = number
   default     = 32768
 }
+
+variable "service_bus_namespace_name" {
+  description = "Globally unique Service Bus namespace name"
+  type        = string
+  default     = "sb-nomadrules"
+}
+
+variable "service_bus_sku" {
+  description = "Basic is enough for one plain queue (about $0.05 per million operations). Standard (~$10/month) adds topics, dedupe, sessions; Premium is required for private networking."
+  type        = string
+  default     = "Basic"
+}
+
+variable "service_bus_queue_name" {
+  description = "Queue the crawler publishes to and ingest consumes; must match ingest.serviceBusQueue in the Helm values"
+  type        = string
+  default     = "law-changes"
+}
+
+variable "storage_account_name" {
+  description = "Globally unique storage account (3-24 lowercase alphanumerics) holding the crawler's snapshot container"
+  type        = string
+  default     = "stnomadrulesdata"
+}
