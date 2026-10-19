@@ -1,0 +1,133 @@
+# Build and scan the service images that need it, then roll everything out with ONE helm upgrade.
+#
+# Every image is tagged with the commit that last touched its source (see
+# .github/scripts/resolve-images.sh). A run builds the images whose tag is missing from the
+# registry and deploys every service at its tag, so a run is idempotent: a cancelled or failed
+# earlier run is repaired by the next one, and runs queue instead of racing for the Helm lock.
+name: images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "infra/helm/**"
+      - ".github/workflows/images.yml"
+      - ".github/scripts/resolve-images.sh"
+
+concurrency:
+  group: images
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      build: ${{ steps.resolve.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: resolve
+        run: |
+          images="$(.github/scripts/resolve-images.sh)"
+          echo "$images" | jq .
+          echo "build=$(echo "$images" | jq -c '[.[] | select(.exists | not)]')" >> "$GITHUB_OUTPUT"
+
+  build-push:
+    needs: plan
+    if: needs.plan.outputs.build != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.plan.outputs.build) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image.context }}
+          push: false
+          load: true
+          tags: |
+            ${{ matrix.image.image }}:${{ matrix.image.sha }}
+            ${{ matrix.image.image }}:latest
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ matrix.image.image }}:${{ matrix.image.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+      - name: Push image
+        run: docker push -a ${{ matrix.image.image }}
+
+  deploy:
+    needs: [plan, build-push]
+    # Deploy whatever images exist even if one build failed; the failed build keeps the run red
+    # and its service stays on its previous tag.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: deploy
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+
+      - uses: azure/setup-helm@v4
+
+      - name: helm upgrade
+        run: |
+          set -euo pipefail
+          images="$(.github/scripts/resolve-images.sh)"
+          mapfile -t tags < <(echo "$images" | jq -r '.[] | select(.exists) | "--set=\(.key).image.tag=\(.sha)"')
+          echo "$images" | jq -r '.[] | select(.exists | not) | "not deployed (no image): \(.name)"'
+          helm upgrade --install nomadrules infra/helm \
+            --namespace nomadrules-services --create-namespace \
+            --reuse-values \
+            -f infra/helm/values-azure.yaml \
+            "${tags[@]}"
