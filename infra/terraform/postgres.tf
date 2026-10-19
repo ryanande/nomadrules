@@ -15,7 +15,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
 
   delegated_subnet_id           = azurerm_subnet.postgres.id
   public_network_access_enabled = false
-  private_dns_zone_id = azurerm_private_dns_zone.postgres.id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
 
   # Burstable B1ms: cheapest tier that fits this workload (pre-100 subscribers,
   # low write volume) — see design.md cost comparison vs. in-cluster Postgres.

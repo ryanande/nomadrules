@@ -35,3 +35,7 @@ Real values (subscription ID, resource names, team member object IDs, break-glas
 ## Team access model
 
 Three tiers only — `Admin`, `Operator`, `ReadOnly` — each mapped to Azure built-in roles at resource-group or per-resource scope (see `rbac.tf`). No custom RBAC role definitions, no PIM/just-in-time elevation yet (revisit if the team grows past two people or P2 licensing is available).
+
+## Messaging and storage (`messaging.tf`)
+
+Terraform provisions the Service Bus namespace (Basic SKU) with the `law-changes` queue and the crawler's storage account, and writes their connection strings to Key Vault as `servicebus-connection-string` and `storage-connection-string` (adopted from the former `REPLACE_ME` placeholders via `moved` blocks). Only `stripe-webhook-secret`, `claude-api-key` and `resend-api-key` remain placeholders to fill by hand. Basic/Standard Service Bus and storage keep a public endpoint (private endpoints need Premium, about $670/month); access is by SAS key / account key held only in Key Vault. After the first apply, restart the ingest deployment (`kubectl -n nomadrules-services rollout restart deploy/nomadrules-ingest`) so it re-reads the secret.

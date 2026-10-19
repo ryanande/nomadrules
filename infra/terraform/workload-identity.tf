@@ -14,11 +14,10 @@ locals {
   }
 
   # Flatten to {secret_name -> unique key} for the placeholder secrets that Terraform
-  # doesn't generate itself (postgres-connection-string is created in postgres.tf).
+  # doesn't generate itself (postgres-connection-string is in postgres.tf; the Service Bus
+  # and storage connection strings are in messaging.tf).
   externally_sourced_secrets = toset([
     "stripe-webhook-secret",
-    "servicebus-connection-string",
-    "storage-connection-string",
     "claude-api-key",
     "resend-api-key",
   ])
