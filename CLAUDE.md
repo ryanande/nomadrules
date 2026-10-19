@@ -31,7 +31,7 @@
 ## Core Architecture Principles
 
 1. **Business needs first** — Revenue model (renewal alerts) shapes technical decisions (event-driven, not time-triggered)
-2. **Choreography over orchestration** — Services emit events via AsyncBus; no central saga coordinator
+2. **Choreography over orchestration** — Services emit events through a message transport (Azure Service Bus in prod, behind a seam); no central saga coordinator
 3. **Async over sync** — All inter-service communication is event-driven
 4. **Consumer-driven contracts** — Each service defines what events it produces/consumes; versioned in code
 5. **Autonomous services** — Services own their database schema; no shared tables across services
@@ -103,7 +103,7 @@ Crawler → AsyncBus
 | **Summarizer** | C# Azure Functions or dedicated service | CPU-bound; Functions for cost efficiency, dedicated svc for throughput control |
 | **Email Service** | C# async handler, Resend API | Event-driven delivery; Resend for simplicity and relay support |
 | **Portal** | React, TypeScript, shadcn/ui, Vite | Modern, accessible, responsive; shadcn/ui for pre-built components |
-| **Messaging** | AsyncBus (RabbitMQ, AMQP.NET Lite) | Choreography-friendly; RabbitMQ for HA; built-in DLQ/retry handling |
+| **Messaging** | Azure Service Bus (Basic queue) behind a transport seam; local-file queue in dev | Managed, ~$1/month, no broker to operate. Broker is swappable (RabbitMQ on another cloud): see "Messaging seam" below |
 | **Database** | Azure Database for PostgreSQL Flexible Server, VNet-integrated | ACID guarantees; managed backups/patching; Dapper for data access |
 | **Deployment** | Kubernetes (AKS), Helm, CI-driven `helm upgrade` | Native K8s for production readiness; Helm for templating; ArgoCD/GitOps deferred until a second environment justifies it (see `openspec/changes/aks-secure-platform-deployment/design.md`) |
 | **Observability** | Prometheus + Grafana, Jaeger, ELK/Seq | Standard K8s monitoring; Jaeger for distributed tracing |
@@ -128,7 +128,13 @@ Crawler → AsyncBus
 - **Why**: Convention-based startup reduces boilerplate; aligns with PrePass.Core.Startup patterns
 - **Trade-off**: Team must be familiar with Flint; less flexible than explicit DI config
 
-**Decision: AsyncBus choreography (not orchestration)**
+**Decision: Broker-neutral messaging seam (Service Bus now, RabbitMQ possible later)**
+- **Why**: Service Bus is managed and near-free at our volume, but a move to AWS or on-prem would favor RabbitMQ. A library like MassTransit/Wolverine/Rebus would only cover .NET (the crawler publishes from TypeScript) and MassTransit v9 is commercially licensed, so the seam is our own thin interfaces: crawler `IMessagePublisher` (`src/crawler/src/core/messageBus.ts`) and ingest `IMessageSource` (`src/ingest/NomadRules.Ingest/Ingest/`). Each has a transport registry (`transports` map / `MessageSources`); an unknown `TRANSPORT` fails fast.
+- **Contract a new transport must keep**: at-least-once delivery; consumer settles only after the DB row is durable (`CompleteAsync`); poison messages go to a dead-letter destination (`DeadLetterAsync`, e.g. RabbitMQ reject to a DLX); dedup is by the producer's `messageId` in the DB, so brokers need no exactly-once feature; messages are the JSON `LawChangeDetected` envelope (no broker-specific headers).
+- **To add RabbitMQ**: implement both interfaces, add one registry entry per service, add broker settings to Helm/Terraform. No pipeline code changes.
+- **Trade-off**: Helm/Key Vault names and env vars (`AZURE_SERVICE_BUS_*`, `servicebus-connection-string`) are still Azure-named; neutralize them when a second transport actually lands rather than speculatively.
+
+**Decision: choreography (not orchestration)**
 - **Why**: No single point of failure; easier to add new consumers; simpler than Saga pattern
 - **Trade-off**: Event ordering and consistency harder to reason about; requires careful event design
 

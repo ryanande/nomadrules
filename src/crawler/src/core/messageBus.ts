@@ -52,13 +52,23 @@ export class LocalFilePublisher implements IMessagePublisher {
   async close(): Promise<void> {}
 }
 
-export function createPublisher(): IMessagePublisher {
-  const transport = process.env.TRANSPORT ?? 'local';
-  if (transport === 'servicebus') {
+// Transport registry: the only place that knows which brokers exist. To add one (e.g. RabbitMQ), implement
+// IMessagePublisher and add an entry here; nothing else in the crawler depends on a broker.
+const transports: Record<string, () => IMessagePublisher> = {
+  local: () => new LocalFilePublisher(process.env.LOCAL_QUEUE_DIR ?? './local-queue'),
+  servicebus: () => {
     const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
     const queueName = process.env.AZURE_SERVICE_BUS_QUEUE ?? 'law-changes';
     if (!connectionString) throw new Error('AZURE_SERVICE_BUS_CONNECTION_STRING is required when TRANSPORT=servicebus');
     return new ServiceBusPublisher(connectionString, queueName);
+  },
+};
+
+export function createPublisher(): IMessagePublisher {
+  const transport = process.env.TRANSPORT ?? 'local';
+  const create = transports[transport];
+  if (!create) {
+    throw new Error(`Unknown TRANSPORT '${transport}' (expected one of: ${Object.keys(transports).join(', ')})`);
   }
-  return new LocalFilePublisher(process.env.LOCAL_QUEUE_DIR ?? './local-queue');
+  return create();
 }
