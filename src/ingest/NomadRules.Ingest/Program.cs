@@ -34,10 +34,16 @@ var isServiceBus = ingest.Transport.Equals("servicebus", StringComparison.Ordina
 builder.Services.AddSingleton(ingest);
 builder.Services.AddSingleton<Db>();
 builder.Services.AddSingleton<IngestRepository>();
-if (isServiceBus)
-    builder.Services.AddSingleton<IMessageSource, ServiceBusSource>();
-else
-    builder.Services.AddSingleton<IMessageSource, LocalFileSource>();
+Type sourceType;
+try
+{
+    sourceType = MessageSources.TypeFor(ingest.Transport);
+}
+catch (InvalidOperationException ex)
+{
+    return Fatal(ex.Message);
+}
+builder.Services.AddSingleton(typeof(IMessageSource), sourceType);
 builder.Services.AddSingleton<IngestWorker>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<IngestWorker>());
 
@@ -104,6 +110,12 @@ static class SelfCheck
             is { MessageId: "m1", State: "TX" });
         Trap(Mapping.TryParse("{ not json") is null);
         Trap(Mapping.TryParse("""{"messageType":"LawChangeDetected"}""") is null); // missing messageId/sourceId
+
+        // Transport registry: known names resolve, unknown names fail instead of silently using the file queue.
+        Trap(MessageSources.TypeFor("local") == typeof(LocalFileSource));
+        Trap(MessageSources.TypeFor("ServiceBus") == typeof(ServiceBusSource)); // case-insensitive
+        try { MessageSources.TypeFor("rabbitmq"); Trap(false); }
+        catch (InvalidOperationException) { }
 
         Console.WriteLine("selfcheck OK");
     }

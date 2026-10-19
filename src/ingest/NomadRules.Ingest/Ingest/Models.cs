@@ -4,7 +4,7 @@ namespace NomadRules.Ingest.Ingest;
 
 public class IngestOptions
 {
-    public string Transport { get; set; } = "local";               // local | servicebus
+    public string Transport { get; set; } = "local";               // see MessageSources
     public string LocalQueueDir { get; set; } = "./local-queue";
     public string? ServiceBusConnectionString { get; set; }
     public string ServiceBusQueue { get; set; } = "law-changes";

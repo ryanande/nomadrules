@@ -142,5 +142,5 @@ Without it, the API boots with dummy values and only the anonymous register endp
 
 - **Secrets are env vars locally, Key Vault in AKS.** Never commit real keys; the compose file and
   appsettings carry only local placeholders.
-- Messaging is Azure Service Bus (prod) / local-file queue (dev) — **not** RabbitMQ, despite older
+- Messaging is Azure Service Bus (prod) / local-file queue (dev) behind a transport seam (see CLAUDE.md) — **not** RabbitMQ, despite older
   references. There is no local broker to run.
