@@ -75,7 +75,8 @@ jobs:
       - run: |
           # Image workflows deploy in parallel and Helm serializes per release: retry only on
           # its release-lock error; any other failure (e.g. a failed migration) fails immediately.
-          for attempt in 1 2 3 4 5 6; do
+          set -o pipefail
+          for attempt in $(seq 1 20); do
             if helm upgrade --install nomadrules infra/helm \
               --namespace nomadrules-services --create-namespace \
               --reuse-values \
