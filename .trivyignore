@@ -4,5 +4,6 @@
 
 # gstreamer1.0-plugins-bad (Playwright base image, Ubuntu 22.04): no fixed version; the
 # crawler launches Chromium only and never loads GStreamer (WebKit-only dependency).
-# Revisit when the base image moves or Ubuntu ships a fix.
-CVE-2025-3887
+# Only the crawler image ships it; if another image reports it, investigate rather than ignore.
+# Expires automatically so it is re-reviewed (quarterly).
+CVE-2025-3887 exp:2027-01-19

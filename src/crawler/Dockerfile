@@ -24,6 +24,7 @@ RUN apt-get update && apt-get upgrade -y \
 # Numeric UID so the pod securityContext's runAsNonRoot (crawler-cronjob.yaml) can
 # verify it. Playwright's browsers under /ms-playwright are world-readable.
 RUN groupadd -r -g 10001 crawler && useradd -r -u 10001 -g crawler -d /app crawler
+RUN mkdir -p /app && chown 10001:10001 /app
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /app/dist ./dist
 COPY --from=build --chown=10001:10001 /app/node_modules ./node_modules
