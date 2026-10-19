@@ -17,6 +17,11 @@ describe('createPublisher', () => {
     expect(() => createPublisher()).toThrow(/Unknown TRANSPORT 'rabbitmq'/);
   });
 
+  it.each(['toString', 'constructor', '__proto__'])('rejects inherited Object keys such as %s', (name) => {
+    process.env.TRANSPORT = name;
+    expect(() => createPublisher()).toThrow(/Unknown TRANSPORT/);
+  });
+
   it('requires a connection string for servicebus', () => {
     process.env.TRANSPORT = 'servicebus';
     delete process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;

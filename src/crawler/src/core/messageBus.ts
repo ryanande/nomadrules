@@ -66,7 +66,7 @@ const transports: Record<string, () => IMessagePublisher> = {
 
 export function createPublisher(): IMessagePublisher {
   const transport = process.env.TRANSPORT ?? 'local';
-  const create = transports[transport];
+  const create = Object.hasOwn(transports, transport) ? transports[transport] : undefined;
   if (!create) {
     throw new Error(`Unknown TRANSPORT '${transport}' (expected one of: ${Object.keys(transports).join(', ')})`);
   }
