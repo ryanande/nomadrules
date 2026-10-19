@@ -12,4 +12,5 @@ RUN dotnet publish -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+USER $APP_UID
 ENTRYPOINT ["dotnet", "NomadRules.Api.dll"]

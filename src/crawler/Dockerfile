@@ -17,9 +17,9 @@ RUN npm run build
 # crawl (matches the pod securityContext's runAsNonRoot in crawler-cronjob.yaml).
 # Playwright's preinstalled browsers under /ms-playwright are world-readable, so
 # no extra chown is needed there — only /app (this user's own build output).
-RUN groupadd -r crawler && useradd -r -g crawler -d /app crawler \
+RUN groupadd -r crawler && useradd -r -u 10001 -g crawler -d /app crawler \
     && chown -R crawler:crawler /app
-USER crawler
+USER 10001
 
 # CronJob runs one crawl pass and exits (see infra/helm/templates/crawler-cronjob.yaml).
 CMD ["node", "dist/index.js", "--run-now"]
