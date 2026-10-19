@@ -112,6 +112,18 @@ Priority levels: `P0` = MVP, `P1` = v1.1, `P2` = future
 
 ---
 
+## Candidate sources (not yet scheduled)
+
+### LOCUS — Local Ordinance Corpus for the United States
+- **Paper**: "Freeing the Law with LOCUS" (Peskoff, Barrow, Vu, Davenport), https://arxiv.org/abs/2606.19334
+- **What**: Machine-readable ordinances from 9,239 cities and counties; a harmonized layer covers the largest 2,309 counties. CC-BY-4.0, on Hugging Face.
+- **Why it might matter**: City/county rules (zoning, licensing, parking, RV-on-property) are a possible v1.1+ "local rules" category. LOCUS could seed a baseline instead of crawling many municipal code vendors.
+- **Not a token saver by itself**: it is raw legal text. Savings would come from diffing against a baseline and sending only changed sections to the summarizer.
+- **Out of scope for MVP** (insurance-only, Texas-only). Revisit when adding categories beyond insurance.
+- **Open questions** (read the full paper): update cadence (snapshot vs. maintained), text schema, license terms for commercial use, Texas coverage, and whether diffs between versions are practical.
+
+---
+
 ## Scraper strategy guide
 
 ### HTML diff
