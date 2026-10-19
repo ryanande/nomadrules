@@ -35,6 +35,11 @@ resource "azurerm_postgresql_flexible_server" "main" {
     # actual data store; a forced-replacement plan (e.g. a SKU family or delegated-
     # subnet change) must never destroy it silently.
     prevent_destroy = true
+
+    # Azure picks the availability zone when none is configured and the API reports it back;
+    # Terraform then plans zone "1" -> null, which the provider rejects without HA standby
+    # zones ("`zone` can only be changed when exchanged with ...standby_availability_zone").
+    ignore_changes = [zone]
   }
 }
 
