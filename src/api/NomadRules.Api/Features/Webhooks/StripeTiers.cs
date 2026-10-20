@@ -6,7 +6,8 @@ public static class StripeTiers
 {
     private static readonly string[] Ranked = ["basic", "pro", "business"];
 
-    public static string Resolve(string? status, IEnumerable<string?> priceLookupKeys)
+    // null means "paid, but no recognized lookup key": the caller must not guess a tier.
+    public static string? Resolve(string? status, IEnumerable<string?> priceLookupKeys)
     {
         if (status is not ("active" or "trialing"))
             return "free";
@@ -15,7 +16,7 @@ public static class StripeTiers
             .Select(FromLookupKey)
             .OfType<string>()
             .OrderByDescending(t => Array.IndexOf(Ranked, t))
-            .FirstOrDefault() ?? Ranked[0];
+            .FirstOrDefault();
     }
 
     public static string? FromLookupKey(string? key)

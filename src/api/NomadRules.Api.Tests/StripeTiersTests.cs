@@ -33,12 +33,16 @@ public class StripeTiersTests
     [InlineData("")]
     [InlineData("gold_monthly")]
     [InlineData("pro")]
-    public void Resolve_PaidButUnrecognizedKey_FallsBackToBasic(string? key)
-        => Assert.Equal("basic", StripeTiers.Resolve("active", new[] { key }));
+    public void Resolve_PaidButUnrecognizedKey_IsUnknown(string? key)
+        => Assert.Null(StripeTiers.Resolve("active", new[] { key }));
 
     [Fact]
-    public void Resolve_PaidWithNoItems_FallsBackToBasic()
-        => Assert.Equal("basic", StripeTiers.Resolve("active", Array.Empty<string?>()));
+    public void Resolve_PaidWithNoItems_IsUnknown()
+        => Assert.Null(StripeTiers.Resolve("active", Array.Empty<string?>()));
+
+    [Fact]
+    public void Resolve_RecognizedKeyAlongsideUnrecognized_UsesRecognized()
+        => Assert.Equal("pro", StripeTiers.Resolve("active", new[] { "gold_monthly", "pro_monthly" }));
 
     [Theory]
     [InlineData("pro_monthly", "pro")]
