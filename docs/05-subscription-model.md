@@ -20,6 +20,10 @@
 - **Products:** `nomrules_basic`, `nomrules_pro`, `nomrules_business`
 - **Prices:** Monthly and annual variants per product (6 prices total)
 - **Annual discount:** ~17% (2 months free)
+- **Price lookup keys (required):** set each Price's lookup key to `<tier>_<period>`: `basic_monthly`, `basic_annual`, `pro_monthly`, `pro_annual`, `business_monthly`, `business_annual`. The webhook reads the tier from the lookup key (same in test and live mode, no IDs in config). A paid subscription with a missing or unrecognized key keeps any existing paid tier (a `free` subscriber becomes `basic`) and logs a warning, so a misconfigured Price can never downgrade a paying subscriber.
+- **Status mapping:** `active` and `trialing` are paid; every other status (including `past_due`) is `free`.
+- **API keys (Key Vault):** `stripe-webhook-secret` (`whsec_...`) and `stripe-api-key` (a restricted key with **Customers: Read**) back `Stripe__WebhookSecret` / `Stripe__SecretKey` on the API.
+- **Webhook API version:** create the endpoint with API version `2026-06-24.dahlia` (what Stripe.net 52.1.0 pins; update it when the package is upgraded). A mismatched version makes the handler return 403.
 - **Trial:** 14-day free trial on all tiers — no credit card required at signup
 - **Billing portal:** Stripe Customer Portal embedded in subscriber portal for self-serve upgrades, downgrades, and cancellations
 

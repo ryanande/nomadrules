@@ -13,7 +13,7 @@ workloadIdentity:
   services:
     api:
       clientId: ""
-      secrets: [postgres-connection-string, stripe-webhook-secret]
+      secrets: [postgres-connection-string, stripe-webhook-secret, stripe-api-key]
     ingest:
       clientId: ""
       secrets: [postgres-connection-string, servicebus-connection-string]

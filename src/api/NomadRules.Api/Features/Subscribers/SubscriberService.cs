@@ -96,14 +96,20 @@ public class SubscriberService(Db db)
         return (await GetByIdAsync(id))!;
     }
 
-    public async Task SetStripeInfoAsync(string email, string customerId, string subscriptionId, string tier)
+    // tier == null: paying subscription whose tier couldn't be determined; keep an existing paid
+    // tier rather than downgrade it, and lift a free subscriber to basic.
+    public async Task SetStripeInfoAsync(string email, string customerId, string subscriptionId, string? tier)
     {
         using var conn = db.Open();
         await conn.ExecuteAsync("""
             UPDATE subscribers SET
               stripe_customer_id     = @customerId,
               stripe_subscription_id = @subscriptionId,
-              tier                   = @tier,
+              tier                   = CASE
+                                         WHEN @tier::text IS NOT NULL THEN @tier::text
+                                         WHEN tier = 'free' THEN 'basic'
+                                         ELSE tier
+                                       END,
               updated_at             = now()::text
             WHERE email = @email
             """, new { email, customerId, subscriptionId, tier });
