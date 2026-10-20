@@ -43,6 +43,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-api-secrets
                   key: stripe-webhook-secret
+            - name: Stripe__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-api-secrets
+                  key: stripe-api-key
             - name: Entra__Authority
               value: {{ .Values.api.entra.authority | quote }}
             - name: Entra__ClientId

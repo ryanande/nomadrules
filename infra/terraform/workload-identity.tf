@@ -5,7 +5,7 @@
 # and the Helm values.yaml service names.
 locals {
   service_secrets = {
-    api            = ["postgres-connection-string", "stripe-webhook-secret"]
+    api            = ["postgres-connection-string", "stripe-webhook-secret", "stripe-api-key"]
     ingest         = ["postgres-connection-string", "servicebus-connection-string"]
     summarizer     = ["postgres-connection-string", "claude-api-key"]
     email-delivery = ["postgres-connection-string", "resend-api-key"]
@@ -18,6 +18,7 @@ locals {
   # and storage connection strings are in messaging.tf).
   externally_sourced_secrets = toset([
     "stripe-webhook-secret",
+    "stripe-api-key",
     "claude-api-key",
     "resend-api-key",
   ])

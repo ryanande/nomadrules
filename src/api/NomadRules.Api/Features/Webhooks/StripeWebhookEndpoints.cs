@@ -43,9 +43,16 @@ public static class StripeWebhookEndpoints
             case EventTypes.CustomerSubscriptionUpdated:
             {
                 var subscription = (Subscription)stripeEvent.Data.Object;
-                var customer = await new CustomerService()
+                var apiKey = config["Stripe:SecretKey"]
+                    ?? throw new InvalidOperationException("Stripe:SecretKey not configured");
+                var customer = await new CustomerService(new StripeClient(apiKey))
                     .GetAsync(subscription.CustomerId);
-                var tier = subscription.Status == "active" ? "pro" : "free";
+                var keys = subscription.Items.Data.Select(i => i.Price.LookupKey).ToList();
+                var tier = StripeTiers.Resolve(subscription.Status, keys);
+                if (tier != "free" && !keys.Any(k => StripeTiers.FromLookupKey(k) is not null))
+                    logger.LogWarning(
+                        "Subscription {SubscriptionId} has no recognized price lookup key ({Keys}); granting basic",
+                        subscription.Id, string.Join(",", keys));
                 await svc.SetStripeInfoAsync(
                     customer.Email!, subscription.CustomerId, subscription.Id, tier);
                 break;
