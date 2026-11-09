@@ -1,5 +1,17 @@
 # CLAUDE.md — NomadRules System Passport
 
+## Passport
+- **Identity:** NomadRules, a personalized legal and regulatory change-monitoring service for full-time RVers and digital nomads, delivering plain-English digests and renewal alerts per subscriber's domicile state.
+- **Owns:** subscriber identity and profiles; law-change crawling, diffing and classification; AI summarization and relevance scoring; renewal calendar and alert triggering; billing (Stripe); digest delivery (Resend).
+- **Does not own:** RV community or marketing content; government source maintenance beyond our crawlers; email deliverability beyond Resend; legal validation (external editorial review).
+- **Depends on / depended on by:** external only: Azure (AKS, Service Bus, PostgreSQL Flexible Server, Entra External ID), Claude API, Stripe, Resend. No dependency on the other notlost repos; nothing depends on it.
+- **Deploys to / runs on:** Azure AKS via Helm (CI-driven `helm upgrade`); Terraform in `infra/`. Not on the RV K3s cluster used by `home-assistant` and `notlost-k3s-containers`.
+- **Entry points:** this file; `docs/02-system-architecture.md`; `openspec/changes/` for in-flight work; `src/` (crawler TS, API and services C#, portal React).
+- **Hard rules:** event-driven choreography, no shared tables across services; messaging goes through the transport seam (`IMessagePublisher` / `IMessageSource`), unknown `TRANSPORT` fails fast; MVP is insurance-only and Texas-only.
+- **Docs:** `docs/` (business concept to MVP plan), `openspec/`, `README.md`.
+
+---
+
 ## System Identity
 
 **NomadRules** is a personalized legal & regulatory intelligence service for full-time RVers, digital nomads, and domicile-state residents. It monitors state and federal law changes (insurance, tax, DMV, voting) and delivers plain-English digests anchored to each subscriber's renewal calendar.
